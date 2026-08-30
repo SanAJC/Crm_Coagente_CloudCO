@@ -1,0 +1,238 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-aeonik), ui-sans-serif, system-ui, sans-serif;
+
+  /* Geniestudio palette, exposed as utilities (bg-sky-tint, text-ink, ...) */
+  --color-sky-tint: #ebf5ff;
+  --color-paper-white: #ffffff;
+  --color-bone-white: #fafdff;
+  --color-mist-gray: #f6f7f8;
+  --color-ink: #0a0d12;
+  --color-charcoal: #181d27;
+  --color-graphite: #535862;
+  --color-fog: #93979f;
+  --color-slate-shadow: #3b3d41;
+  --color-iris-blue: #0069e0;
+  --color-sky-blue: #0099ff;
+  --color-lavender-wash: #f1e6ff;
+  --color-mint-wash: #d3f6e3;
+  --color-powder-blue: #cce7ff;
+  --color-solar-wash: #fff2be;
+  --color-violet-wash: #e4ccff;
+  --color-aqua-wash: #c2e9ff;
+  --color-peach-wash: #ffd1b8;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-2xl: 32px;
+  --radius-3xl: 32px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-soft: 0 1px 2px rgba(10, 13, 18, 0.05);
+  --shadow-lift: 0px 14px 20px 4px rgba(4, 69, 144, 0.08);
+  --shadow-button: 0 1px 2px rgba(10, 13, 18, 0.8), 0 0 0 1px #0a0d12;
+}
+
+:root {
+  --radius: 16px;
+
+  --background: #ebf5ff;
+  --foreground: #0a0d12;
+
+  --card: #fafdff;
+  --card-foreground: #0a0d12;
+  --popover: #ffffff;
+  --popover-foreground: #0a0d12;
+
+  --primary: #181d27;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f6f7f8;
+  --secondary-foreground: #0a0d12;
+
+  --muted: #f6f7f8;
+  --muted-foreground: #93979f;
+
+  --accent: #cce7ff;
+  --accent-foreground: #0a0d12;
+
+  --destructive: oklch(0.57 0.2 25);
+  --destructive-foreground: #ffffff;
+
+  --success: #2fae63;
+  --success-foreground: #ffffff;
+  --warning: #f5b83d;
+  --warning-foreground: #0a0d12;
+  --info: #0099ff;
+  --info-foreground: #ffffff;
+
+  --border: #dce7f2;
+  --input: #dce7f2;
+  --ring: #0069e0;
+
+  --chart-1: #0069e0;
+  --chart-2: #2fae63;
+  --chart-3: #f5b83d;
+  --chart-4: #a463e0;
+  --chart-5: #535862;
+
+  --sidebar: #fafdff;
+  --sidebar-foreground: #0a0d12;
+  --sidebar-primary: #181d27;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #cce7ff;
+  --sidebar-accent-foreground: #0a0d12;
+  --sidebar-border: #dce7f2;
+  --sidebar-ring: #0069e0;
+}
+
+.dark {
+  --background: #0a0d12;
+  --foreground: #fafdff;
+  --card: #181d27;
+  --card-foreground: #fafdff;
+  --popover: #181d27;
+  --popover-foreground: #fafdff;
+  --primary: #fafdff;
+  --primary-foreground: #181d27;
+  --secondary: #23272f;
+  --secondary-foreground: #fafdff;
+  --muted: #23272f;
+  --muted-foreground: #93979f;
+  --accent: #23303f;
+  --accent-foreground: #cce7ff;
+  --destructive: oklch(0.65 0.19 25);
+  --destructive-foreground: #ffffff;
+  --success: #2fae63;
+  --success-foreground: #0a0d12;
+  --warning: #f5b83d;
+  --warning-foreground: #0a0d12;
+  --info: #0099ff;
+  --info-foreground: #0a0d12;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #0099ff;
+  --sidebar: #14171d;
+  --sidebar-foreground: #fafdff;
+  --sidebar-primary: #fafdff;
+  --sidebar-primary-foreground: #181d27;
+  --sidebar-accent: #23303f;
+  --sidebar-accent-foreground: #cce7ff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #0099ff;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility panel {
+  background-color: var(--color-card);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+@utility barcode {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-foreground) 0 2px,
+    transparent 2px 4px,
+    var(--color-foreground) 4px 5px,
+    transparent 5px 9px,
+    var(--color-foreground) 9px 12px,
+    transparent 12px 14px
+  );
+}
+
+@utility ticket-card {
+  position: relative;
+  background-color: var(--color-card);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+@utility ticket-notch {
+  position: relative;
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 9999px;
+    background-color: var(--color-background);
+    transform: translateY(-50%);
+  }
+  &::before {
+    left: -0.5rem;
+  }
+  &::after {
+    right: -0.5rem;
+  }
+}
