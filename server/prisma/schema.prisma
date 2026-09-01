@@ -69,6 +69,8 @@ model Usuario {
   ticketsCreados     Ticket[]            @relation("TicketCreadoPor")
   ticketSeguimientos TicketSeguimiento[]
   mensajesEnviados   Mensaje[]
+  refreshTokens      RefreshToken[]
+  blacklistedTokens  BlacklistedToken[]
 
   @@map("usuarios")
 }
@@ -82,6 +84,27 @@ model UsuarioRole {
 
   @@id([usuarioId, roleId])
   @@map("usuarios_roles")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  usuarioId Int      @map("usuario_id")
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  tokenHash String
+  jti       String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model BlacklistedToken {
+  id        String   @id @default(uuid())
+  usuarioId Int      @map("usuario_id")
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  jti       String   @unique
+  expiresAt DateTime
+  reason    String?
+  createdAt DateTime @default(now())
 }
 
 // =====================================================================
