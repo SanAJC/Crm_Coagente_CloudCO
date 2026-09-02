@@ -4,6 +4,8 @@ import { AuthModule } from './auth/auth.module.js';
 import { RbacModule } from './auth/rbac.module.js';
 import { AuthMiddleware } from './auth/middlewares/jwt.middleware.js';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { DatabaseModule } from './database/database.module.js';
+import { UsuariosModule } from './api/usuarios/usuarios.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -20,8 +22,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       ttl: 60000,
       limit: 10,
     }]),
+    DatabaseModule,
     AuthModule,
     RbacModule,
+    UsuariosModule,
   ],
 })
 export class AppModule implements NestModule {

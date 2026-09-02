@@ -16,10 +16,14 @@ datasource db {
 // MODULO 1: USUARIOS Y PERMISOS (RBAC)
 // =====================================================================
 
+/// `esAdmin` marca el rol con control total sobre el modulo de usuarios.
+/// A lo sumo un rol puede tener esAdmin = true: hay un indice unico parcial
+/// sobre esta columna en la migracion (Prisma Schema Language no lo expresa).
 model Role {
   id          Int      @id @default(autoincrement())
   nombre      String   @unique @db.VarChar(50)
   descripcion String?  @db.VarChar(255)
+  esAdmin     Boolean  @default(false) @map("es_admin")
   createdAt   DateTime @default(now()) @map("created_at")
 
   rolesPermisos RolePermiso[]

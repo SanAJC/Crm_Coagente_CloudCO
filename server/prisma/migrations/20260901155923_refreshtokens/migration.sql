@@ -34,8 +34,3 @@ ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_usuario_id_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "BlacklistedToken" ADD CONSTRAINT "BlacklistedToken_usuario_id_fkey" FOREIGN KEY ("usuario_id") REFERENCES "usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- Restaura el indice GIN de mensajes.metadata: el autodiff de Prisma lo marco
--- para DROP porque schema.prisma no puede declarar indices GIN de forma nativa
--- (ver migracion 20260831013108_init). No es parte del cambio de esta migracion.
-CREATE INDEX "idx_mensajes_metadata" ON "mensajes" USING GIN ("metadata");

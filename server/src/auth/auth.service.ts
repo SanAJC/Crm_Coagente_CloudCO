@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
 import { JwtGeneratedService } from './utils/jwt_generated.js';
 import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { RefreshTokenDto } from './dto/refresh_token.js';
 import { LogoutDto } from './dto/logout.js';
 import { LoginDto } from './dto/login.js';
