@@ -19,7 +19,7 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       const payload = await this.authService.validateToken(token);
-      req['user'] = payload;
+      (req as Request & { user?: unknown }).user = payload;
       next();
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');

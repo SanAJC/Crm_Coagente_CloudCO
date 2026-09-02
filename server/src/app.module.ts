@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod, } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { AuthModule } from './auth/auth.module.js';
+import { RbacModule } from './auth/rbac.module.js';
 import { AuthMiddleware } from './auth/middlewares/jwt.middleware.js';
 import { ThrottlerModule } from '@nestjs/throttler';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -20,6 +21,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       limit: 10,
     }]),
     AuthModule,
+    RbacModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -27,6 +29,7 @@ export class AppModule implements NestModule {
     consumer
       .apply(AuthMiddleware)
       .exclude(
+        { path: '/', method: RequestMethod.GET },
         { path: 'api/auth/login', method: RequestMethod.POST },
         { path: 'api/auth/register', method: RequestMethod.POST },
         { path: 'api/auth/refresh', method: RequestMethod.POST },
