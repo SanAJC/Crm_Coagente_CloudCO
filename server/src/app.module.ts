@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module.js';
 import { UsuariosModule } from './api/usuarios/usuarios.module.js';
 import { ProductsModule } from './api/products/products.module.js';
+import { ClientsModule } from './api/clients/clients.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -28,6 +29,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     RbacModule,
     UsuariosModule,
     ProductsModule,
+    ClientsModule,
   ],
 })
 export class AppModule implements NestModule {
