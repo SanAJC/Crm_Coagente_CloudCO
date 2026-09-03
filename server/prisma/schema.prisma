@@ -65,16 +65,15 @@ model Usuario {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  usuariosRoles      UsuarioRole[]
-  productosCreados   Producto[]          @relation("ProductoCreadoPor")
-  reservasAtendidas  Reserva[]
-  pedidosAtendidos   Pedido[]
-  ticketsAsignados   Ticket[]            @relation("TicketAsignadoA")
-  ticketsCreados     Ticket[]            @relation("TicketCreadoPor")
-  ticketSeguimientos TicketSeguimiento[]
-  mensajesEnviados   Mensaje[]
-  refreshTokens      RefreshToken[]
-  blacklistedTokens  BlacklistedToken[]
+  usuariosRoles     UsuarioRole[]
+  productosCreados  Producto[]         @relation("ProductoCreadoPor")
+  reservasAtendidas Reserva[]
+  pedidosAtendidos  Pedido[]
+  ticketsAsignados  Ticket[]           @relation("TicketAsignadoA")
+  ticketsCreados    Ticket[]           @relation("TicketCreadoPor")
+  mensajesEnviados  Mensaje[]
+  refreshTokens     RefreshToken[]
+  blacklistedTokens BlacklistedToken[]
 
   @@map("usuarios")
 }
@@ -141,10 +140,9 @@ model Producto {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  categoria       Categoria?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  creadoPor       Usuario?         @relation("ProductoCreadoPor", fields: [createdBy], references: [id])
-  reservaDetalles ReservaDetalle[]
-  pedidoDetalles  PedidoDetalle[]
+  categoria      Categoria?      @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  creadoPor      Usuario?        @relation("ProductoCreadoPor", fields: [createdBy], references: [id])
+  pedidoDetalles PedidoDetalle[]
 
   @@index([categoriaId], map: "idx_productos_categoria")
   @@map("productos")
@@ -186,30 +184,12 @@ model Reserva {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  cliente         Cliente          @relation(fields: [clienteId], references: [id])
-  usuario         Usuario?         @relation(fields: [usuarioId], references: [id])
-  reservaDetalles ReservaDetalle[]
-  pedidos         Pedido[]
+  cliente Cliente  @relation(fields: [clienteId], references: [id])
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+  pedidos Pedido[]
 
   @@index([clienteId], map: "idx_reservas_cliente")
   @@map("reservas")
-}
-
-/// El campo `subtotal` es una columna GENERATED ALWAYS AS (cantidad * precio_unitario) STORED
-/// en PostgreSQL (ver modelo_crm.sql); no debe escribirse desde la capa de aplicacion.
-model ReservaDetalle {
-  id             Int     @id @default(autoincrement())
-  reservaId      Int     @map("reserva_id")
-  productoId     Int     @map("producto_id")
-  cantidad       Int
-  precioUnitario Decimal @map("precio_unitario") @db.Decimal(12, 2)
-  subtotal       Decimal @db.Decimal(12, 2)
-
-  reserva  Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
-  producto Producto @relation(fields: [productoId], references: [id])
-
-  @@index([reservaId], map: "idx_reserva_detalle_res")
-  @@map("reserva_detalle")
 }
 
 // =====================================================================
@@ -274,32 +254,15 @@ model Ticket {
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
   fechaResolucion DateTime? @map("fecha_resolucion")
 
-  pedido         Pedido?             @relation(fields: [pedidoId], references: [id])
-  asignado       Usuario?            @relation("TicketAsignadoA", fields: [asignadoA], references: [id])
-  creador        Usuario?            @relation("TicketCreadoPor", fields: [creadoPor], references: [id])
-  seguimientos   TicketSeguimiento[]
+  pedido         Pedido?        @relation(fields: [pedidoId], references: [id])
+  asignado       Usuario?       @relation("TicketAsignadoA", fields: [asignadoA], references: [id])
+  creador        Usuario?       @relation("TicketCreadoPor", fields: [creadoPor], references: [id])
   conversaciones Conversacion[]
 
   @@index([pedidoId], map: "idx_tickets_pedido")
   @@index([estado], map: "idx_tickets_estado")
   @@index([asignadoA], map: "idx_tickets_asignado")
   @@map("tickets")
-}
-
-model TicketSeguimiento {
-  id             Int      @id @default(autoincrement())
-  ticketId       Int      @map("ticket_id")
-  usuarioId      Int?     @map("usuario_id")
-  comentario     String
-  estadoAnterior String?  @map("estado_anterior") @db.VarChar(20)
-  estadoNuevo    String?  @map("estado_nuevo") @db.VarChar(20)
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  ticket  Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  usuario Usuario? @relation(fields: [usuarioId], references: [id])
-
-  @@index([ticketId], map: "idx_ticket_seg_ticket")
-  @@map("ticket_seguimiento")
 }
 
 // =====================================================================
