@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { UsuariosModule } from './api/usuarios/usuarios.module.js';
 import { ProductsModule } from './api/products/products.module.js';
 import { ClientsModule } from './api/clients/clients.module.js';
+import { BookingModule } from './api/booking/booking.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -30,6 +31,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UsuariosModule,
     ProductsModule,
     ClientsModule,
+    BookingModule,
   ],
 })
 export class AppModule implements NestModule {
