@@ -11,6 +11,7 @@ import { ClientsModule } from './api/clients/clients.module.js';
 import { BookingModule } from './api/booking/booking.module.js';
 import { TicketsModule } from './api/tickets/tickets.module.js';
 import { OrderModule } from './api/order/order.module.js';
+import { N8nModule } from './webhooks/n8n/n8n.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -36,6 +37,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     BookingModule,
     TicketsModule,
     OrderModule,
+    N8nModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -50,6 +52,11 @@ export class AppModule implements NestModule {
         { path: 'auth/login', method: RequestMethod.POST },
         { path: 'auth/register', method: RequestMethod.POST },
         { path: 'auth/refresh', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/mensajes', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/reservas', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/pedidos', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/tickets', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/tickets/:id', method: RequestMethod.PATCH },
       )
       .forRoutes('*'); // Aplicar a todas las rutas excepto las excluidas
   }
