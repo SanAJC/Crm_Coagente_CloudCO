@@ -1,35 +1,15 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { clearStoredTokens, getStoredTokens, setStoredTokens } from "./token-storage";
-
 const baseURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
-export const api = axios.create({ baseURL });
-
-api.interceptors.request.use((config) => {
-  const tokens = getStoredTokens();
-  if (tokens?.accessToken) {
-    config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-  }
-  return config;
-});
+export const api = axios.create({ baseURL, withCredentials: true });
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
-  const tokens = getStoredTokens();
-  if (!tokens?.refreshToken) {
-    throw new Error("No hay refresh token disponible");
-  }
-
-  const response = await axios.post<{ accessToken: string; refreshToken: string }>(
-    `${baseURL}/auth/refresh`,
-    { refreshToken: tokens.refreshToken },
-  );
-  setStoredTokens(response.data);
-  return response.data.accessToken;
+async function refreshSession(): Promise<void> {
+  await axios.post(`${baseURL}/auth/refresh`, null, { withCredentials: true });
 }
 
 api.interceptors.response.use(
@@ -37,7 +17,9 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
     const isAuthRoute =
-      original?.url?.includes("/auth/login") || original?.url?.includes("/auth/refresh");
+      original?.url?.includes("/auth/login") ||
+      original?.url?.includes("/auth/refresh") ||
+      original?.url?.includes("/auth/me");
 
     if (error.response?.status !== 401 || !original || original._retry || isAuthRoute) {
       throw error;
@@ -46,15 +28,13 @@ api.interceptors.response.use(
     original._retry = true;
 
     try {
-      refreshPromise ??= refreshAccessToken().finally(() => {
+      refreshPromise ??= refreshSession().finally(() => {
         refreshPromise = null;
       });
-      const accessToken = await refreshPromise;
-      original.headers.Authorization = `Bearer ${accessToken}`;
+      await refreshPromise;
       return api(original);
     } catch (refreshError) {
-      clearStoredTokens();
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
       throw refreshError;

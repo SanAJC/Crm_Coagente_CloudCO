@@ -12,9 +12,6 @@ import {
 
 import * as authApi from "@/api/auth.api";
 import type { AuthUser } from "@/api/auth.api";
-import { clearStoredTokens, getStoredTokens, setStoredTokens } from "@/api/token-storage";
-
-const USER_KEY = "mesa-crm-user";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -31,38 +28,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const tokens = getStoredTokens();
-      const rawUser = window.localStorage.getItem(USER_KEY);
-      if (tokens && rawUser) {
-        // One-shot hydration of a persisted session on mount; there's no
-        // external-store subscription to sync against, just a single read.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setUser(JSON.parse(rawUser) as AuthUser);
-      }
-    } catch {
-      clearStoredTokens();
-      window.localStorage.removeItem(USER_KEY);
-    }
-    setHydrated(true);
+    let cancelled = false;
+
+    authApi
+      .me()
+      .then((data) => {
+        if (!cancelled) setUser(data);
+      })
+      .catch(() => {
+        // sin cookie valida o expirada: se queda deslogueado
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { accessToken, refreshToken, data_user } = await authApi.login(email, password);
-    setStoredTokens({ accessToken, refreshToken });
-    window.localStorage.setItem(USER_KEY, JSON.stringify(data_user));
-    setUser(data_user);
+    const data = await authApi.login(email, password);
+    setUser(data);
   }, []);
 
   const logout = useCallback(async () => {
-    const tokens = getStoredTokens();
     try {
-      await authApi.logout(tokens?.refreshToken);
+      await authApi.logout();
     } catch {
       // best-effort: si el backend no responde igual cerramos la sesión local
     }
-    clearStoredTokens();
-    window.localStorage.removeItem(USER_KEY);
     setUser(null);
   }, []);
 

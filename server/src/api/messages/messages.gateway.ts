@@ -6,17 +6,13 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { parseCookie } from 'cookie';
 import type { Server, Socket } from 'socket.io';
 import { AuthService } from '../../auth/auth.service.js';
+import { ACCESS_TOKEN_COOKIE } from '../../auth/auth.constants.js';
 
 const SALA_INBOX = 'inbox';
 
-/**
- * Empuja mensajes/conversaciones en tiempo real al frontend del CRM.
- * n8n habla con el backend por HTTP (webhooks); el navegador no puede
- * exponer un endpoint para que le llamen, asi que aca el unico canal
- * posible es WebSocket. Ver server/docs/plan-mensajes-webhooks.md.
- */
 @WebSocketGateway({ cors: { origin: true, credentials: true } })
 export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -27,9 +23,8 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(private readonly authService: AuthService) {}
 
   async handleConnection(client: Socket) {
-    const token =
-      (client.handshake.auth?.token as string | undefined) ??
-      client.handshake.headers.authorization?.replace('Bearer ', '');
+    const rawCookie = client.handshake.headers.cookie;
+    const token = rawCookie ? parseCookie(rawCookie)[ACCESS_TOKEN_COOKIE] : undefined;
 
     if (!token) {
       client.disconnect();
