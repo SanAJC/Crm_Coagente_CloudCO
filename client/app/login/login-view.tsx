@@ -3,23 +3,38 @@
 import { ChefHat, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { IconField } from "@/components/icon-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCrm } from "@/lib/crm-store";
+import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
 export function LoginView() {
-  const { user, signIn } = useCrm();
+  const { user, login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("gerencia@casaaurora.co");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) router.replace("/dashboard");
   }, [user, router]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await login(email.trim(), password);
+      router.replace("/dashboard");
+    } catch {
+      toast.error("Credenciales inválidas. Verifica tu correo y contraseña.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-sky-tint">
@@ -29,12 +44,7 @@ export function LoginView() {
         <div className="flex items-center justify-center px-6 py-12">
           <form
             className="w-full max-w-sm rounded-[32px] bg-bone-white p-8 shadow-[var(--shadow-lift)] sm:p-10"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!email.trim()) return;
-              signIn(email.trim());
-              router.replace("/dashboard");
-            }}
+            onSubmit={handleSubmit}
           >
             <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-button)]">
               <ChefHat className="size-6" />
@@ -69,12 +79,10 @@ export function LoginView() {
               </div>
             </div>
 
-            <Button type="submit" className="mt-6 w-full">
-              Ingresar al panel
+            <Button type="submit" className="mt-6 w-full" disabled={submitting}>
+              {submitting ? "Ingresando…" : "Ingresar al panel"}
             </Button>
-            <p className="mt-4 text-xs text-fog">
-              Versión demo: cualquier correo y contraseña abren el panel con datos de ejemplo.
-            </p>
+            <p className="mt-4 text-xs text-fog">Autenticación conectada al backend del CRM.</p>
           </form>
         </div>
 
@@ -103,8 +111,8 @@ export function LoginView() {
             </div>
           </div>
           <p className="flex items-center gap-2 text-xs text-graphite">
-            <Sparkles className="size-3.5 text-iris-blue" /> Datos de demostración, sin base de
-            datos conectada.
+            <Sparkles className="size-3.5 text-iris-blue" /> Login conectado al backend; el resto
+            del panel aún usa datos de demostración.
           </p>
         </div>
       </div>

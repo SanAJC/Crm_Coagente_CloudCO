@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 
 import { IconField } from "@/components/icon-field";
 import { Button } from "@/components/ui/button";
-import { useCrm } from "@/lib/crm-store";
+import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -42,7 +42,7 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const { user, signOut } = useCrm();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -94,18 +94,18 @@ export function AppShell({
 
           <div className="flex items-center gap-2.5 border-t border-sidebar-border px-2 pt-3">
             <span className="flex size-8 items-center justify-center rounded-full bg-charcoal text-xs font-medium text-white">
-              {user?.name.slice(0, 1) ?? "?"}
+              {user?.nombre.slice(0, 1) ?? "?"}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-ink">{user?.name ?? "Invitado"}</p>
+              <p className="truncate text-xs font-medium text-ink">{user?.nombre ?? "Invitado"}</p>
               <p className="truncate text-[11px] text-fog">{user?.email ?? ""}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               className="size-8 rounded-full text-fog"
-              onClick={() => {
-                signOut();
+              onClick={async () => {
+                await logout();
                 router.replace("/login");
               }}
             >

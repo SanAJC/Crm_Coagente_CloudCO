@@ -24,7 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currency, orderStageLabels, orderTotal, type Order, type OrderStage } from "@/lib/crm-data";
+import {
+  currency,
+  orderStageLabels,
+  orderTotal,
+  type Order,
+  type OrderStage,
+} from "@/lib/crm-data";
 import { newId, useCrm } from "@/lib/crm-store";
 
 const stages: OrderStage[] = ["nuevo", "cocina", "servido", "cerrado"];

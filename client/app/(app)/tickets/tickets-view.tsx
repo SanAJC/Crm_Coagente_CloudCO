@@ -70,8 +70,14 @@ const emptyTicket = (): SupportTicket => ({
 });
 
 export function TicketsView() {
-  const { supportTickets, orders, team, saveSupportTicket, moveSupportTicket, deleteSupportTicket } =
-    useCrm();
+  const {
+    supportTickets,
+    orders,
+    team,
+    saveSupportTicket,
+    moveSupportTicket,
+    deleteSupportTicket,
+  } = useCrm();
   const [draft, setDraft] = useState<SupportTicket | null>(null);
   const [isNew, setIsNew] = useState(false);
 
@@ -104,10 +110,7 @@ export function TicketsView() {
               {column.map((ticket) => {
                 const order = orders.find((o) => o.id === ticket.orderId);
                 return (
-                  <article
-                    key={ticket.id}
-                    className="panel space-y-3 border border-border p-4"
-                  >
+                  <article key={ticket.id} className="panel space-y-3 border border-border p-4">
                     <div className="flex items-start justify-between gap-2">
                       <button
                         type="button"
@@ -122,7 +125,9 @@ export function TicketsView() {
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{ticket.code}</p>
                       </button>
-                      <span className={`mt-1 size-2 shrink-0 rounded-full ${priorityDot[ticket.priority]}`} />
+                      <span
+                        className={`mt-1 size-2 shrink-0 rounded-full ${priorityDot[ticket.priority]}`}
+                      />
                     </div>
 
                     <p className="line-clamp-2 text-xs text-muted-foreground">

@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-import { useCrm } from "@/lib/crm-store";
+import { useAuth } from "@/context/auth-context";
 
 export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
-  const { user, hydrated } = useCrm();
+  const { user, hydrated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

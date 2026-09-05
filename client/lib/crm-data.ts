@@ -294,7 +294,8 @@ export const demoSupportTickets: SupportTicket[] = [
     id: "st1",
     code: "TCK-1001",
     subject: "Pedido llegó incompleto",
-    description: "Faltó el risotto de hongos en la entrega. Cliente molesto, pide reposición o descuento.",
+    description:
+      "Faltó el risotto de hongos en la entrega. Cliente molesto, pide reposición o descuento.",
     customer: "Andrés Gómez",
     type: "incidencia",
     priority: "alta",
@@ -318,7 +319,8 @@ export const demoSupportTickets: SupportTicket[] = [
     id: "st3",
     code: "TCK-1003",
     subject: "Reembolso por plato en mal estado",
-    description: "El salmón llegó frío y con olor extraño. Cliente exige reembolso completo del plato.",
+    description:
+      "El salmón llegó frío y con olor extraño. Cliente exige reembolso completo del plato.",
     customer: "Grupo Nexus",
     type: "devolucion",
     priority: "urgente",
@@ -343,7 +345,8 @@ export const demoSupportTickets: SupportTicket[] = [
     id: "st5",
     code: "TCK-1005",
     subject: "Reserva no confirmada a tiempo por el agente IA",
-    description: "El agente tomó la reserva pero el cliente nunca recibió la confirmación por WhatsApp.",
+    description:
+      "El agente tomó la reserva pero el cliente nunca recibió la confirmación por WhatsApp.",
     customer: "Laura Mendoza",
     type: "incidencia",
     priority: "media",

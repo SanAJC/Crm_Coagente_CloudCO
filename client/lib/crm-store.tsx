@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import {
   defaultCalendarSettings,
@@ -31,15 +23,7 @@ import {
   type TicketStatus,
 } from "./crm-data";
 
-export type SessionUser = { name: string; email: string; role: string };
-
-const SESSION_KEY = "mesa-crm-session";
-
 type CrmContextValue = {
-  user: SessionUser | null;
-  hydrated: boolean;
-  signIn: (email: string) => SessionUser;
-  signOut: () => void;
   products: Product[];
   reservations: Reservation[];
   orders: Order[];
@@ -74,8 +58,6 @@ function upsert<T extends { id: string }>(list: T[], item: T) {
 }
 
 export function CrmProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const [products, setProducts] = useState<Product[]>(demoProducts);
   const [reservations, setReservations] = useState<Reservation[]>(demoReservations);
   const [orders, setOrders] = useState<Order[]>(demoOrders);
@@ -85,42 +67,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [team, setTeam] = useState<TeamMember[]>(demoTeam);
   const [rolePermissions, setRolePermissions] = useState<RolePermissions>(defaultRolePermissions);
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SESSION_KEY);
-      // One-shot hydration of a persisted demo session on mount; there's no
-      // external-store subscription to sync against, just a single read.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setUser(JSON.parse(raw) as SessionUser);
-    } catch {
-      // ignore corrupted demo session
-    }
-    setHydrated(true);
-  }, []);
-
-  const signIn = useCallback((email: string) => {
-    const handle = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Equipo";
-    const session: SessionUser = {
-      name: handle.replace(/\b\w/g, (c) => c.toUpperCase()),
-      email,
-      role: "Administrador",
-    };
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setUser(session);
-    return session;
-  }, []);
-
-  const signOut = useCallback(() => {
-    window.localStorage.removeItem(SESSION_KEY);
-    setUser(null);
-  }, []);
-
   const value = useMemo<CrmContextValue>(
     () => ({
-      user,
-      hydrated,
-      signIn,
-      signOut,
       products,
       reservations,
       orders,
@@ -167,19 +115,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           };
         }),
     }),
-    [
-      user,
-      hydrated,
-      signIn,
-      signOut,
-      products,
-      reservations,
-      orders,
-      supportTickets,
-      calendarSettings,
-      team,
-      rolePermissions,
-    ],
+    [products, reservations, orders, supportTickets, calendarSettings, team, rolePermissions],
   );
 
   return <CrmContext.Provider value={value}>{children}</CrmContext.Provider>;
