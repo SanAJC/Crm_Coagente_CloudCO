@@ -22,19 +22,38 @@ export type Reservation = {
   note: string;
 };
 
-export type TicketStage = "nuevo" | "cocina" | "servido" | "cerrado";
+export type OrderStage = "nuevo" | "cocina" | "servido" | "cerrado";
 
-export type TicketItem = { productId: string; name: string; qty: number; price: number };
+export type OrderItem = { productId: string; name: string; qty: number; price: number };
 
-export type Ticket = {
+export type Order = {
   id: string;
   code: string;
   customer: string;
   channel: "Salón" | "Delivery" | "Agente IA" | "Teléfono";
-  stage: TicketStage;
+  stage: OrderStage;
   createdAt: string;
-  items: TicketItem[];
+  items: OrderItem[];
   note: string;
+};
+
+export type TicketType = "seguimiento" | "incidencia" | "consulta" | "devolucion";
+export type TicketPriority = "baja" | "media" | "alta" | "urgente";
+export type TicketStatus = "abierto" | "en_proceso" | "resuelto" | "cerrado";
+
+export type SupportTicket = {
+  id: string;
+  code: string;
+  subject: string;
+  description: string;
+  customer: string;
+  type: TicketType;
+  priority: TicketPriority;
+  status: TicketStatus;
+  orderId?: string;
+  assignee?: string;
+  createdAt: string;
+  resolvedAt?: string;
 };
 
 export const demoProducts: Product[] = [
@@ -201,10 +220,10 @@ export const demoReservations: Reservation[] = [
   },
 ];
 
-export const demoTickets: Ticket[] = [
+export const demoOrders: Order[] = [
   {
-    id: "t1",
-    code: "TCK-2041",
+    id: "o1",
+    code: "PED-2041",
     customer: "Mesa 4 · Camila R.",
     channel: "Salón",
     stage: "cocina",
@@ -216,8 +235,8 @@ export const demoTickets: Ticket[] = [
     note: "Término medio en ambos cortes.",
   },
   {
-    id: "t2",
-    code: "TCK-2042",
+    id: "o2",
+    code: "PED-2042",
     customer: "Andrés Gómez",
     channel: "Delivery",
     stage: "nuevo",
@@ -229,8 +248,8 @@ export const demoTickets: Ticket[] = [
     note: "Entrega en portería, torre B.",
   },
   {
-    id: "t3",
-    code: "TCK-2043",
+    id: "o3",
+    code: "PED-2043",
     customer: "Laura Mendoza",
     channel: "Agente IA",
     stage: "nuevo",
@@ -239,8 +258,8 @@ export const demoTickets: Ticket[] = [
     note: "Pedido tomado por el agente en WhatsApp.",
   },
   {
-    id: "t4",
-    code: "TCK-2039",
+    id: "o4",
+    code: "PED-2039",
     customer: "Mesa 9 · Familia Vélez",
     channel: "Salón",
     stage: "servido",
@@ -252,8 +271,8 @@ export const demoTickets: Ticket[] = [
     note: "Postres al centro.",
   },
   {
-    id: "t5",
-    code: "TCK-2036",
+    id: "o5",
+    code: "PED-2036",
     customer: "Grupo Nexus",
     channel: "Teléfono",
     stage: "cerrado",
@@ -263,10 +282,96 @@ export const demoTickets: Ticket[] = [
   },
 ];
 
-export const stageLabels: Record<TicketStage, string> = {
+export const orderStageLabels: Record<OrderStage, string> = {
   nuevo: "Nuevo",
   cocina: "En cocina",
   servido: "Servido",
+  cerrado: "Cerrado",
+};
+
+export const demoSupportTickets: SupportTicket[] = [
+  {
+    id: "st1",
+    code: "TCK-1001",
+    subject: "Pedido llegó incompleto",
+    description: "Faltó el risotto de hongos en la entrega. Cliente molesto, pide reposición o descuento.",
+    customer: "Andrés Gómez",
+    type: "incidencia",
+    priority: "alta",
+    status: "abierto",
+    orderId: "o2",
+    createdAt: `${iso(0)}T13:20`,
+  },
+  {
+    id: "st2",
+    code: "TCK-1002",
+    subject: "Consulta por alérgenos",
+    description: "Pregunta si el risotto de hongos tiene lácteos, tiene un comensal intolerante.",
+    customer: "Familia Vélez",
+    type: "consulta",
+    priority: "media",
+    status: "en_proceso",
+    assignee: "Valentina Ríos",
+    createdAt: `${iso(0)}T11:45`,
+  },
+  {
+    id: "st3",
+    code: "TCK-1003",
+    subject: "Reembolso por plato en mal estado",
+    description: "El salmón llegó frío y con olor extraño. Cliente exige reembolso completo del plato.",
+    customer: "Grupo Nexus",
+    type: "devolucion",
+    priority: "urgente",
+    status: "abierto",
+    orderId: "o5",
+    createdAt: `${iso(0)}T14:05`,
+  },
+  {
+    id: "st4",
+    code: "TCK-1004",
+    subject: "Confirmar llegada a evento corporativo",
+    description: "Seguimiento post-servicio para confirmar satisfacción del almuerzo corporativo.",
+    customer: "Grupo Nexus",
+    type: "seguimiento",
+    priority: "baja",
+    status: "resuelto",
+    assignee: "Camilo Duarte",
+    createdAt: `${iso(-1)}T10:00`,
+    resolvedAt: `${iso(-1)}T16:30`,
+  },
+  {
+    id: "st5",
+    code: "TCK-1005",
+    subject: "Reserva no confirmada a tiempo por el agente IA",
+    description: "El agente tomó la reserva pero el cliente nunca recibió la confirmación por WhatsApp.",
+    customer: "Laura Mendoza",
+    type: "incidencia",
+    priority: "media",
+    status: "cerrado",
+    assignee: "Valentina Ríos",
+    createdAt: `${iso(-2)}T09:15`,
+    resolvedAt: `${iso(-2)}T09:50`,
+  },
+];
+
+export const ticketTypeLabels: Record<TicketType, string> = {
+  seguimiento: "Seguimiento",
+  incidencia: "Incidencia",
+  consulta: "Consulta",
+  devolucion: "Devolución",
+};
+
+export const ticketPriorityLabels: Record<TicketPriority, string> = {
+  baja: "Baja",
+  media: "Media",
+  alta: "Alta",
+  urgente: "Urgente",
+};
+
+export const ticketStatusLabels: Record<TicketStatus, string> = {
+  abierto: "Abierto",
+  en_proceso: "En proceso",
+  resuelto: "Resuelto",
   cerrado: "Cerrado",
 };
 
@@ -328,20 +433,22 @@ export const demoTeam: TeamMember[] = [
 ];
 
 export type PermissionKey =
-  "reservas" | "pedidos" | "productos" | "conversaciones" | "configuracion";
+  "reservas" | "pedidos" | "productos" | "tickets" | "conversaciones" | "configuracion";
 
 export const permissions: PermissionKey[] = [
   "reservas",
   "pedidos",
   "productos",
+  "tickets",
   "conversaciones",
   "configuracion",
 ];
 
 export const permissionLabels: Record<PermissionKey, string> = {
   reservas: "Reservas",
-  pedidos: "Pedidos / Tickets",
+  pedidos: "Pedidos",
   productos: "Productos",
+  tickets: "Tickets de atención",
   conversaciones: "Conversaciones",
   configuracion: "Configuración",
 };
@@ -349,8 +456,8 @@ export const permissionLabels: Record<PermissionKey, string> = {
 export type RolePermissions = Record<Role, PermissionKey[]>;
 
 export const defaultRolePermissions: RolePermissions = {
-  Administrador: ["reservas", "pedidos", "productos", "conversaciones", "configuracion"],
-  Gerente: ["reservas", "pedidos", "productos", "conversaciones"],
+  Administrador: ["reservas", "pedidos", "productos", "tickets", "conversaciones", "configuracion"],
+  Gerente: ["reservas", "pedidos", "productos", "tickets", "conversaciones"],
   Mesero: ["reservas", "pedidos"],
   Cocina: ["pedidos"],
 };
@@ -401,5 +508,5 @@ export const currency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export const ticketTotal = (ticket: Ticket) =>
-  ticket.items.reduce((sum, item) => sum + item.qty * item.price, 0);
+export const orderTotal = (order: Order) =>
+  order.items.reduce((sum, item) => sum + item.qty * item.price, 0);

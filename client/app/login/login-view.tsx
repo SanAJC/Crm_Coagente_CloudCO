@@ -85,13 +85,13 @@ export function LoginView() {
               Reservas, pedidos y menú en un solo lugar.
             </h2>
             <p className="mt-4 max-w-md text-sm text-graphite">
-              Diseñado para operar el servicio en vivo: agenda por franjas, tickets por estado y
+              Diseñado para operar el servicio en vivo: agenda por franjas, pedidos por estado y
               control de disponibilidad del menú.
             </p>
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {[
                 ["Agenda del día", "Franjas de 30 min por mesa", "bg-lavender-wash"],
-                ["Tickets", "Nuevo · Cocina · Servido · Cerrado", "bg-mint-wash"],
+                ["Pedidos", "Nuevo · Cocina · Servido · Cerrado", "bg-mint-wash"],
                 ["Catálogo", "CRUD de platos y bebidas", "bg-powder-blue"],
                 ["Agente IA", "Próximamente conectado", "bg-solar-wash"],
               ].map(([label, hint, wash]) => (

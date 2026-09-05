@@ -13,19 +13,22 @@ import {
 import {
   defaultCalendarSettings,
   defaultRolePermissions,
+  demoOrders,
   demoProducts,
   demoReservations,
+  demoSupportTickets,
   demoTeam,
-  demoTickets,
   type CalendarSettings,
+  type Order,
+  type OrderStage,
   type PermissionKey,
   type Product,
   type Reservation,
   type Role,
   type RolePermissions,
+  type SupportTicket,
   type TeamMember,
-  type Ticket,
-  type TicketStage,
+  type TicketStatus,
 } from "./crm-data";
 
 export type SessionUser = { name: string; email: string; role: string };
@@ -39,14 +42,18 @@ type CrmContextValue = {
   signOut: () => void;
   products: Product[];
   reservations: Reservation[];
-  tickets: Ticket[];
+  orders: Order[];
+  supportTickets: SupportTicket[];
   saveProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   saveReservation: (reservation: Reservation) => void;
   deleteReservation: (id: string) => void;
-  saveTicket: (ticket: Ticket) => void;
-  moveTicket: (id: string, stage: TicketStage) => void;
-  deleteTicket: (id: string) => void;
+  saveOrder: (order: Order) => void;
+  moveOrder: (id: string, stage: OrderStage) => void;
+  deleteOrder: (id: string) => void;
+  saveSupportTicket: (ticket: SupportTicket) => void;
+  moveSupportTicket: (id: string, status: TicketStatus) => void;
+  deleteSupportTicket: (id: string) => void;
   calendarSettings: CalendarSettings;
   saveCalendarSettings: (settings: CalendarSettings) => void;
   team: TeamMember[];
@@ -71,7 +78,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [products, setProducts] = useState<Product[]>(demoProducts);
   const [reservations, setReservations] = useState<Reservation[]>(demoReservations);
-  const [tickets, setTickets] = useState<Ticket[]>(demoTickets);
+  const [orders, setOrders] = useState<Order[]>(demoOrders);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(demoSupportTickets);
   const [calendarSettings, setCalendarSettings] =
     useState<CalendarSettings>(defaultCalendarSettings);
   const [team, setTeam] = useState<TeamMember[]>(demoTeam);
@@ -115,15 +123,33 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       signOut,
       products,
       reservations,
-      tickets,
+      orders,
+      supportTickets,
       saveProduct: (product) => setProducts((list) => upsert(list, product)),
       deleteProduct: (id) => setProducts((list) => list.filter((p) => p.id !== id)),
       saveReservation: (reservation) => setReservations((list) => upsert(list, reservation)),
       deleteReservation: (id) => setReservations((list) => list.filter((r) => r.id !== id)),
-      saveTicket: (ticket) => setTickets((list) => upsert(list, ticket)),
-      moveTicket: (id, stage) =>
-        setTickets((list) => list.map((t) => (t.id === id ? { ...t, stage } : t))),
-      deleteTicket: (id) => setTickets((list) => list.filter((t) => t.id !== id)),
+      saveOrder: (order) => setOrders((list) => upsert(list, order)),
+      moveOrder: (id, stage) =>
+        setOrders((list) => list.map((o) => (o.id === id ? { ...o, stage } : o))),
+      deleteOrder: (id) => setOrders((list) => list.filter((o) => o.id !== id)),
+      saveSupportTicket: (ticket) => setSupportTickets((list) => upsert(list, ticket)),
+      moveSupportTicket: (id, status) =>
+        setSupportTickets((list) =>
+          list.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  status,
+                  resolvedAt:
+                    status === "resuelto" || status === "cerrado"
+                      ? (t.resolvedAt ?? new Date().toISOString().slice(0, 16))
+                      : t.resolvedAt,
+                }
+              : t,
+          ),
+        ),
+      deleteSupportTicket: (id) => setSupportTickets((list) => list.filter((t) => t.id !== id)),
       calendarSettings,
       saveCalendarSettings: (settings) => setCalendarSettings(settings),
       team,
@@ -148,7 +174,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
       signOut,
       products,
       reservations,
-      tickets,
+      orders,
+      supportTickets,
       calendarSettings,
       team,
       rolePermissions,

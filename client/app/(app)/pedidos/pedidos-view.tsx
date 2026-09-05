@@ -24,25 +24,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currency, stageLabels, ticketTotal, type Ticket, type TicketStage } from "@/lib/crm-data";
+import { currency, orderStageLabels, orderTotal, type Order, type OrderStage } from "@/lib/crm-data";
 import { newId, useCrm } from "@/lib/crm-store";
 
-const stages: TicketStage[] = ["nuevo", "cocina", "servido", "cerrado"];
-const channels: Ticket["channel"][] = ["Salón", "Delivery", "Agente IA", "Teléfono"];
+const stages: OrderStage[] = ["nuevo", "cocina", "servido", "cerrado"];
+const channels: Order["channel"][] = ["Salón", "Delivery", "Agente IA", "Teléfono"];
 
-const stageDot: Record<TicketStage, string> = {
+const stageDot: Record<OrderStage, string> = {
   nuevo: "bg-warning",
   cocina: "bg-info",
   servido: "bg-success",
   cerrado: "bg-muted-foreground",
 };
 
-const nextStage = (stage: TicketStage) =>
+const nextStage = (stage: OrderStage) =>
   stages[Math.min(stages.indexOf(stage) + 1, stages.length - 1)]!;
 
-const emptyTicket = (): Ticket => ({
+const emptyOrder = (): Order => ({
   id: newId(),
-  code: `TCK-${Math.floor(2050 + Math.random() * 900)}`,
+  code: `PED-${Math.floor(2050 + Math.random() * 900)}`,
   customer: "",
   channel: "Salón",
   stage: "nuevo",
@@ -52,8 +52,8 @@ const emptyTicket = (): Ticket => ({
 });
 
 export function PedidosView() {
-  const { tickets, products, saveTicket, moveTicket, deleteTicket } = useCrm();
-  const [draft, setDraft] = useState<Ticket | null>(null);
+  const { orders, products, saveOrder, moveOrder, deleteOrder } = useCrm();
+  const [draft, setDraft] = useState<Order | null>(null);
   const [isNew, setIsNew] = useState(false);
 
   const addItem = (productId: string) => {
@@ -84,31 +84,31 @@ export function PedidosView() {
   return (
     <AppShell
       breadcrumb="Operación"
-      title="Pedidos / Tickets"
+      title="Pedidos"
       actions={
         <Button
           onClick={() => {
-            setDraft(emptyTicket());
+            setDraft(emptyOrder());
             setIsNew(true);
           }}
         >
-          <Plus className="size-4" /> Crear ticket
+          <Plus className="size-4" /> Crear pedido
         </Button>
       }
     >
       <div className="grid gap-4 lg:grid-cols-4">
         {stages.map((stage) => {
-          const column = tickets.filter((ticket) => ticket.stage === stage);
+          const column = orders.filter((order) => order.stage === stage);
           return (
             <section key={stage} className="panel flex flex-col gap-3 bg-secondary/40 p-3">
               <header className="flex items-center gap-2 px-1">
                 <span className={`size-2 rounded-full ${stageDot[stage]}`} />
-                <h2 className="text-sm font-medium">{stageLabels[stage]}</h2>
+                <h2 className="text-sm font-medium">{orderStageLabels[stage]}</h2>
                 <span className="text-xs text-muted-foreground">{column.length}</span>
               </header>
 
-              {column.map((ticket) => (
-                <article key={ticket.id} className="ticket-card">
+              {column.map((order) => (
+                <article key={order.id} className="ticket-card">
                   <div className="space-y-3 p-4">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                       <span>Canal</span>
@@ -124,23 +124,23 @@ export function PedidosView() {
                           type="button"
                           className="font-display text-2xl font-medium leading-none tracking-tight hover:text-primary"
                           onClick={() => {
-                            setDraft({ ...ticket, items: ticket.items.map((i) => ({ ...i })) });
+                            setDraft({ ...order, items: order.items.map((i) => ({ ...i })) });
                             setIsNew(false);
                           }}
                         >
-                          {ticket.code}
+                          {order.code}
                         </button>
                         <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {ticket.channel}
+                          {order.channel}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-display text-lg font-medium leading-none tabular-nums">
-                          {currency(ticketTotal(ticket))}
+                          {currency(orderTotal(order))}
                         </p>
                         <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className={`size-1.5 rounded-full ${stageDot[ticket.stage]}`} />
-                          {stageLabels[ticket.stage]}
+                          <span className={`size-1.5 rounded-full ${stageDot[order.stage]}`} />
+                          {orderStageLabels[order.stage]}
                         </p>
                       </div>
                     </div>
@@ -149,19 +149,19 @@ export function PedidosView() {
                       <div>
                         <p className="text-[10px] uppercase tracking-wider opacity-70">Hora</p>
                         <p className="text-sm font-medium tabular-nums">
-                          {ticket.createdAt.slice(11, 16)}
+                          {order.createdAt.slice(11, 16)}
                         </p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase tracking-wider opacity-70">Ítems</p>
                         <p className="text-sm font-medium tabular-nums">
-                          {ticket.items.reduce((sum, item) => sum + item.qty, 0)}
+                          {order.items.reduce((sum, item) => sum + item.qty, 0)}
                         </p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase tracking-wider opacity-70">Mesa</p>
                         <p className="truncate text-sm font-medium">
-                          {ticket.customer.split("·")[0]?.trim() || "—"}
+                          {order.customer.split("·")[0]?.trim() || "—"}
                         </p>
                       </div>
                     </div>
@@ -170,11 +170,11 @@ export function PedidosView() {
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         Cliente
                       </p>
-                      <p className="truncate text-sm font-medium">{ticket.customer}</p>
+                      <p className="truncate text-sm font-medium">{order.customer}</p>
                     </div>
 
                     <ul className="space-y-1">
-                      {ticket.items.map((item) => (
+                      {order.items.map((item) => (
                         <li key={item.productId} className="flex justify-between text-xs">
                           <span className="truncate pr-2">
                             {item.qty}× {item.name}
@@ -191,14 +191,14 @@ export function PedidosView() {
 
                   <div className="flex items-center justify-between gap-2 p-4 pt-3">
                     <span className="barcode h-9 flex-1 opacity-80" aria-hidden="true" />
-                    {ticket.stage === "cerrado" ? (
+                    {order.stage === "cerrado" ? (
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Eliminar ${ticket.code}`}
+                        aria-label={`Eliminar ${order.code}`}
                         onClick={() => {
-                          deleteTicket(ticket.id);
-                          toast.success("Ticket eliminado");
+                          deleteOrder(order.id);
+                          toast.success("Pedido eliminado");
                         }}
                       >
                         <Trash2 className="size-4" />
@@ -207,9 +207,9 @@ export function PedidosView() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => moveTicket(ticket.id, nextStage(ticket.stage))}
+                        onClick={() => moveOrder(order.id, nextStage(order.stage))}
                       >
-                        {stageLabels[nextStage(ticket.stage)]}
+                        {orderStageLabels[nextStage(order.stage)]}
                         <ArrowRight className="size-3.5" />
                       </Button>
                     )}
@@ -222,7 +222,7 @@ export function PedidosView() {
                 size="sm"
                 className="text-muted-foreground"
                 onClick={() => {
-                  setDraft({ ...emptyTicket(), stage });
+                  setDraft({ ...emptyOrder(), stage });
                   setIsNew(true);
                 }}
               >
@@ -236,14 +236,14 @@ export function PedidosView() {
       <Dialog open={draft !== null} onOpenChange={(open) => !open && setDraft(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isNew ? "Crear ticket" : `Ticket ${draft?.code}`}</DialogTitle>
+            <DialogTitle>{isNew ? "Crear pedido" : `Pedido ${draft?.code}`}</DialogTitle>
             <DialogDescription>
               Selecciona productos del catálogo y define el canal de venta.
             </DialogDescription>
           </DialogHeader>
           {draft ? (
             <form
-              id="ticket-form"
+              id="order-form"
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -251,9 +251,9 @@ export function PedidosView() {
                   toast.error("Agrega el cliente y al menos un producto");
                   return;
                 }
-                saveTicket(draft);
+                saveOrder(draft);
                 setDraft(null);
-                toast.success(isNew ? "Ticket creado" : "Ticket actualizado");
+                toast.success(isNew ? "Pedido creado" : "Pedido actualizado");
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -271,7 +271,7 @@ export function PedidosView() {
                   <Select
                     value={draft.channel}
                     onValueChange={(value) =>
-                      setDraft({ ...draft, channel: value as Ticket["channel"] })
+                      setDraft({ ...draft, channel: value as Order["channel"] })
                     }
                   >
                     <SelectTrigger>
@@ -290,7 +290,7 @@ export function PedidosView() {
                   <Label>Estado</Label>
                   <Select
                     value={draft.stage}
-                    onValueChange={(value) => setDraft({ ...draft, stage: value as TicketStage })}
+                    onValueChange={(value) => setDraft({ ...draft, stage: value as OrderStage })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -298,7 +298,7 @@ export function PedidosView() {
                     <SelectContent>
                       {stages.map((stage) => (
                         <SelectItem key={stage} value={stage}>
-                          {stageLabels[stage]}
+                          {orderStageLabels[stage]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -367,15 +367,15 @@ export function PedidosView() {
                 <div className="flex items-center justify-between border-t border-border p-3">
                   <span className="text-sm text-muted-foreground">Total</span>
                   <span className="text-base font-medium tabular-nums">
-                    {currency(ticketTotal(draft))}
+                    {currency(orderTotal(draft))}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ticket-note">Nota para cocina</Label>
+                <Label htmlFor="order-note">Nota para cocina</Label>
                 <Textarea
-                  id="ticket-note"
+                  id="order-note"
                   value={draft.note}
                   onChange={(event) => setDraft({ ...draft, note: event.target.value })}
                 />
@@ -387,7 +387,7 @@ export function PedidosView() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  deleteTicket(draft.id);
+                  deleteOrder(draft.id);
                   setDraft(null);
                   toast.success("Ticket eliminado");
                 }}
@@ -401,7 +401,7 @@ export function PedidosView() {
               <Button variant="outline" onClick={() => setDraft(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" form="ticket-form">
+              <Button type="submit" form="order-form">
                 Guardar
               </Button>
             </div>

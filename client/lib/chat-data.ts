@@ -152,7 +152,7 @@ export const demoConversations: Conversation[] = [
     unread: 1,
     lastTime: "11:15",
     preview: "Hola, necesito ayuda con mi pedido",
-    suggestion: "¿Reviso el estado del ticket TCK-2042 y le informo el tiempo de entrega?",
+    suggestion: "¿Reviso el estado del pedido PED-2042 y le informo el tiempo de entrega?",
     messages: [
       {
         id: "m1",

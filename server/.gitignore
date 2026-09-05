@@ -61,3 +61,7 @@ CLAUDE.md
 /src/generated/prisma
 
 modelo_crm.sql
+
+
+/docs/*
+

@@ -237,7 +237,10 @@ model PedidoDetalle {
 }
 
 // =====================================================================
-// MODULO 6: TICKETS (SEGUIMIENTO DE PEDIDOS)
+// MODULO 6: TICKETS (SOPORTE / ATENCION AL CLIENTE)
+// Un ticket es un caso o reporte sobre un problema de atencion con un cliente
+// (incidencia, consulta, devolucion, seguimiento general). pedidoId es opcional:
+// se usa solo cuando el caso esta relacionado con un pedido puntual, no siempre.
 // =====================================================================
 
 model Ticket {

@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChefHat,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   MessagesSquare,
   Receipt,
@@ -24,7 +25,8 @@ const nav = [
   { to: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { to: "/conversaciones", label: "Conversaciones", icon: MessagesSquare },
   { to: "/reservas", label: "Reservas", icon: CalendarDays },
-  { to: "/pedidos", label: "Pedidos / Tickets", icon: Receipt },
+  { to: "/pedidos", label: "Pedidos", icon: Receipt },
+  { to: "/tickets", label: "Tickets", icon: LifeBuoy },
   { to: "/productos", label: "Productos", icon: UtensilsCrossed },
   { to: "/configuracion", label: "Configuración", icon: Settings },
 ] as const;
@@ -50,9 +52,7 @@ export function AppShell({
 
       <aside className="sticky top-0 z-10 hidden h-screen w-[248px] shrink-0 flex-col bg-sidebar px-3 py-5 md:flex">
         <div className="flex items-center gap-2.5 px-2">
-          <span className="flex size-9 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-button)]">
-            <ChefHat className="size-4" />
-          </span>
+          <img src="/logo.png" alt="" className="size-12" />
           <div className="min-w-0">
             <p className="truncate font-display text-sm font-medium text-sidebar-foreground">
               Mesa CRM

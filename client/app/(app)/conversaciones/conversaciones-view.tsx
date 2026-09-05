@@ -511,7 +511,7 @@ export function ConversationsView() {
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() => toast.success("Ticket creado desde la conversación")}
+                    onClick={() => toast.success("Pedido creado desde la conversación")}
                   >
                     <ShoppingCart className="size-4" /> Crear pedido
                   </Button>
