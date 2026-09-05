@@ -13,7 +13,6 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Perms } from '../../auth/decorators/perm.decorator.js';
@@ -42,8 +41,7 @@ export class BookingController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(PermsGuard)
   @Perms('reservas.gestionar')
-  @UsePipes(CreateBookingPipe)
-  create(@Body() dto: CreateBookingDto, @Req() req: Request) {
+  create(@Body(CreateBookingPipe) dto: CreateBookingDto, @Req() req: Request) {
     const user = (req as Request & { user?: { userId?: number } }).user;
     if (!user?.userId) {
       throw new UnauthorizedException('No se encontró el usuario autenticado');
@@ -54,8 +52,10 @@ export class BookingController {
   @Patch(':id')
   @UseGuards(PermsGuard)
   @Perms('reservas.gestionar')
-  @UsePipes(UpdateBookingPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookingDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateBookingPipe) dto: UpdateBookingDto,
+  ) {
     return this.bookingService.update(id, dto);
   }
 

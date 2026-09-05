@@ -10,7 +10,6 @@ import {
   Patch,
   Post,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import { Perms } from '../../../auth/decorators/perm.decorator.js';
 import { PermsGuard } from '../../../auth/guards/perm.decorator.js';
@@ -38,16 +37,17 @@ export class CategoriasController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(PermsGuard)
   @Perms('productos.crear')
-  @UsePipes(CreateCategoriaPipe)
-  create(@Body() dto: CreateCategoriaDto) {
+  create(@Body(CreateCategoriaPipe) dto: CreateCategoriaDto) {
     return this.categoriasService.create(dto);
   }
 
   @Patch(':id')
   @UseGuards(PermsGuard)
   @Perms('productos.editar')
-  @UsePipes(UpdateCategoriaPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoriaDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateCategoriaPipe) dto: UpdateCategoriaDto,
+  ) {
     return this.categoriasService.update(id, dto);
   }
 

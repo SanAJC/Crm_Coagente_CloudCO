@@ -13,7 +13,6 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Perms } from '../../auth/decorators/perm.decorator.js';
@@ -42,8 +41,7 @@ export class TicketsController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(PermsGuard)
   @Perms('tickets.gestionar')
-  @UsePipes(CreateTicketPipe)
-  create(@Body() dto: CreateTicketDto, @Req() req: Request) {
+  create(@Body(CreateTicketPipe) dto: CreateTicketDto, @Req() req: Request) {
     const user = (req as Request & { user?: { userId?: number } }).user;
     if (!user?.userId) {
       throw new UnauthorizedException('No se encontró el usuario autenticado');
@@ -54,8 +52,10 @@ export class TicketsController {
   @Patch(':id')
   @UseGuards(PermsGuard)
   @Perms('tickets.gestionar')
-  @UsePipes(UpdateTicketPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTicketDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateTicketPipe) dto: UpdateTicketDto,
+  ) {
     return this.ticketsService.update(id, dto);
   }
 

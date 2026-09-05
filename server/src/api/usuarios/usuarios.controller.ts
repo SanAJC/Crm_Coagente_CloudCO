@@ -11,7 +11,6 @@ import {
   Post,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import { Perms } from '../../auth/decorators/perm.decorator.js';
 import { AdminGuard } from '../../auth/guards/admin.guard.js';
@@ -40,14 +39,15 @@ export class UsuariosController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(CreateUsuarioPipe)
-  create(@Body() dto: CreateUsuarioDto) {
+  create(@Body(CreateUsuarioPipe) dto: CreateUsuarioDto) {
     return this.usuariosService.create(dto);
   }
 
   @Patch(':id')
-  @UsePipes(UpdateUsuarioPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUsuarioDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateUsuarioPipe) dto: UpdateUsuarioDto,
+  ) {
     return this.usuariosService.update(id, dto);
   }
 

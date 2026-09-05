@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MensajesRepository } from '../../repository/mensajes.repository.js';
-import type { MensajeEntranteDto } from './dto/mensaje-entrante.dto.js';
 
 const AGENT_USER_EMAIL = 'agente-ia@sistema.local';
 
@@ -24,19 +23,5 @@ export class N8nService {
 
     this.agentUserId = usuario.id;
     return usuario.id;
-  }
-
-  registrarMensajeEntrante(dto: MensajeEntranteDto) {
-    return this.mensajesRepository.crearMensajeEntrante({
-      canal: dto.canal,
-      canalChatId: dto.canalChatId,
-      clienteId: dto.clienteId,
-      canalMensajeId: dto.canalMensajeId,
-      remitente: dto.remitente,
-      tipoContenido: dto.tipoContenido,
-      contenido: dto.contenido,
-      urlAdjunto: dto.urlAdjunto,
-      metadata: dto.metadata,
-    });
   }
 }

@@ -13,7 +13,6 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Perms } from '../../auth/decorators/perm.decorator.js';
@@ -42,8 +41,7 @@ export class ProductsController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(PermsGuard)
   @Perms('productos.crear')
-  @UsePipes(CreateProductPipe)
-  create(@Body() dto: CreateProductDto, @Req() req: Request) {
+  create(@Body(CreateProductPipe) dto: CreateProductDto, @Req() req: Request) {
     const user = (req as Request & { user?: { userId?: number } }).user;
     if (!user?.userId) {
       throw new UnauthorizedException('No se encontró el usuario autenticado');
@@ -54,8 +52,10 @@ export class ProductsController {
   @Patch(':id')
   @UseGuards(PermsGuard)
   @Perms('productos.editar')
-  @UsePipes(UpdateProductPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateProductPipe) dto: UpdateProductDto,
+  ) {
     return this.productsService.update(id, dto);
   }
 

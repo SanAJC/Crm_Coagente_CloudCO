@@ -10,7 +10,6 @@ import {
   Patch,
   Post,
   Query,
-  UsePipes,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service.js';
 import { CreateClientDto } from './dto/create-client.dto.js';
@@ -34,14 +33,15 @@ export class ClientsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(CreateClientPipe)
-  create(@Body() dto: CreateClientDto) {
+  create(@Body(CreateClientPipe) dto: CreateClientDto) {
     return this.clientsService.create(dto);
   }
 
   @Patch(':id')
-  @UsePipes(UpdateClientPipe)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateClientDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(UpdateClientPipe) dto: UpdateClientDto,
+  ) {
     return this.clientsService.update(id, dto);
   }
 
