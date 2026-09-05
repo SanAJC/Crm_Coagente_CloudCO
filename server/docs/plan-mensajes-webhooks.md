@@ -120,17 +120,38 @@ Diseño del gateway:
 - **Excluir del `AuthMiddleware` global:** las rutas `/webhooks/n8n/*` deben sumarse a la lista de `exclude()` en `app.module.ts` (igual que ya se hizo con `/auth/login`), porque no traen JWT.
 - **Vinculación cliente ↔ conversación:** cuando llega un mensaje de un `canal_chat_id` nuevo, ¿cómo sabemos si corresponde a un `Cliente` ya existente? No hay una respuesta obvia desde el modelo actual (no hay un campo tipo `telefono` normalizado para cruzar con WhatsApp). Lo dejo como pregunta abierta en la sección 8.
 
-## 7. Fases de implementación sugeridas
+## 7. Fases de implementación
 
-1. **CRUD base de `conversaciones`/`mensajes`** (mismo patrón que los módulos anteriores) + `POST /webhooks/n8n/mensajes` con `AgentApiKeyGuard`. Sin WebSocket todavía — se puede probar con Postman/curl simulando a n8n.
-2. **Gateway WebSocket** + emisión de eventos desde el webhook entrante. Esto ya destraba que el frontend vea mensajes en vivo.
-3. **Flujo de salida:** `POST /conversaciones/:id/mensajes` (humano) + servicio que llama al webhook de salida de n8n.
-4. **Endpoints de acciones del agente** (`/webhooks/n8n/reservas` `/pedidos` `/tickets`), reutilizando los `Service` existentes + el usuario de sistema sembrado.
+1. ✅ **CRUD base de `conversaciones`/`mensajes`** + `POST /webhooks/n8n/mensajes` con `AgentApiKeyGuard`.
+2. ✅ **Gateway WebSocket** (`src/api/messages/messages.gateway.ts`) + emisión de eventos desde el webhook entrante.
+3. ✅ **Flujo de salida:** `POST /conversaciones/:id/mensajes` (humano) llama a `N8nOutboundService.enviarAPlataforma()`, que hace `fetch` al `N8N_OUTBOUND_WEBHOOK_URL`. Ver sección 9 para el contrato.
+4. ✅ **Endpoints de acciones del agente** (`/webhooks/n8n/reservas` `/pedidos` `/tickets`), reutilizando los `Service` existentes + el usuario de sistema sembrado (`agente-ia@sistema.local`).
 
-## 8. Decisiones abiertas — necesito que las resuelvas antes de implementar
+Las cuatro fases están implementadas y verificadas manualmente (incluyendo el caso de n8n caído/no configurado, que degrada a `entregado: false` sin romper la request).
 
-1. **¿Confirmas la Opción B (API key estática) para el agente**, o preferís explorar la A (cuenta de servicio con JWT) a pesar de la fricción de renovación?
-2. **Vinculación `Cliente` ↔ conversación nueva:** ¿el cruce se hace por `telefono` (habría que normalizar formato E.164), lo resuelve el propio agente de n8n antes de llamarnos (nos manda el `clienteId` si ya lo identificó), o queda sin vincular hasta que un humano lo asocie manualmente desde el CRM?
-3. **URL del webhook de salida de n8n:** ¿ya existe ese endpoint en tus workflows actuales, o hay que definirlo junto con este trabajo?
-4. **¿Un solo workflow de n8n para los tres canales, o uno por canal?** No afecta al backend (todo entra normalizado por `canal`), pero ayuda a saber qué probar primero.
-5. **Alcance de "seguimiento" del agente:** cuando dijiste que el agente hacía *seguimiento* para atender al cliente, ¿eso es literalmente crear/actualizar un `Ticket`, o hay un concepto de seguimiento distinto que no está en el modelo actual (recordá que ya sacamos `ticket_seguimiento` del esquema)?
+## 8. Decisiones tomadas
+
+1. **API key estática (Opción B)** confirmada para el agente.
+2. **Vinculación `Cliente` ↔ conversación nueva:** sigue abierta — por ahora `clienteId` es opcional en `POST /webhooks/n8n/mensajes`; si n8n ya lo identificó, lo manda; si no, la conversación queda con `clienteId: null` hasta que un humano la asocie manualmente vía `PATCH /conversaciones/:id`.
+3. **URL del webhook de salida de n8n:** todavía no definida del lado de n8n — el backend ya está listo (`N8N_OUTBOUND_WEBHOOK_URL` en `.env`, vacío por defecto). Falta que definan ese workflow y peguen la URL real.
+4. **Workflow único vs. uno por canal en n8n:** sin definir, no afecta al backend.
+5. **Alcance de "seguimiento" del agente:** sin definir — por ahora el agente puede crear/actualizar `Ticket` vía `/webhooks/n8n/tickets`, que es el único concepto de seguimiento que sobrevive en el modelo actual.
+
+## 9. Contrato del webhook de salida (CRM → n8n)
+
+El backend hace `POST` al `N8N_OUTBOUND_WEBHOOK_URL` configurado, con este body cuando un humano responde desde el CRM:
+
+```json
+{
+  "canal": "whatsapp",
+  "canalChatId": "5215551234",
+  "tipoContenido": "texto",
+  "contenido": "Claro, contame que necesitas",
+  "urlAdjunto": null,
+  "mensajeId": 42
+}
+```
+
+Header opcional `X-Outbound-Api-Key` (valor de `N8N_OUTBOUND_API_KEY`) si el workflow de n8n exige autenticación en el webhook receptor. El workflow de n8n debe usar `canal` + `canalChatId` para saber a qué chat de qué plataforma entregar `contenido`/`urlAdjunto`.
+
+Comportamiento del backend ante fallas: timeout de 5s, cualquier error de red o respuesta no-2xx se loguea (`N8nOutboundService`) pero **nunca** hace fallar la request HTTP que originó el mensaje — el mensaje ya quedó persistido y emitido por WebSocket antes de intentar la entrega. La respuesta de `POST /conversaciones/:id/mensajes` incluye `"entregado": true|false` para que el frontend pueda avisar si la entrega real a la plataforma falló.
