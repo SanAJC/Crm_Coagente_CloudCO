@@ -10,7 +10,7 @@ const CONVERSACION_SELECT = {
   estado: true,
   ultimoMensajeAt: true,
   createdAt: true,
-  cliente: { select: { id: true, nombre: true } },
+  cliente: { select: { id: true, nombre: true, email: true, telefono: true } },
 } as const;
 
 export interface CrearMensajeData {

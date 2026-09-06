@@ -3,222 +3,252 @@
 import {
   ArrowLeft,
   Bot,
-  Building2,
-  CalendarClock,
   Check,
-  CheckCheck,
-  Clock,
   Instagram,
-  Link2,
   Mail,
-  MapPin,
   MessageCircle,
   Phone,
   Search,
   Send,
-  ShoppingCart,
-  Smile,
-  Star,
-  Tag,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  enviarMensaje,
+  listConversaciones,
+  listMensajes,
+  updateConversacion,
+  type Canal,
+  type Conversacion,
+  type EstadoConversacion,
+  type Mensaje,
+} from "@/api/messages.api";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  channelLabels,
-  demoConversations,
-  type ChatChannel,
-  type Conversation,
-} from "@/lib/chat-data";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { getSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
 
-const channelOrder: ChatChannel[] = ["whatsapp", "telegram", "instagram"];
+const channelOrder: Canal[] = ["whatsapp", "telegram", "instagram"];
 
-const channelStyles: Record<ChatChannel, { dot: string; ring: string; soft: string }> = {
+const channelLabels: Record<Canal, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  instagram: "Instagram",
+};
+
+const channelStyles: Record<Canal, { dot: string; ring: string; soft: string }> = {
   whatsapp: { dot: "bg-success", ring: "ring-success/30", soft: "bg-success/10 text-success" },
   telegram: { dot: "bg-info", ring: "ring-info/30", soft: "bg-info/10 text-info" },
   instagram: { dot: "bg-primary", ring: "ring-primary/30", soft: "bg-primary/10 text-primary" },
 };
 
-const statusStyles: Record<Conversation["status"], string> = {
-  "en línea": "text-success",
-  esperando: "text-warning",
-  resuelta: "text-muted-foreground",
-};
-
-const channelIcons: Record<ChatChannel, typeof MessageCircle> = {
+const channelIcons: Record<Canal, typeof MessageCircle> = {
   whatsapp: MessageCircle,
   telegram: Send,
   instagram: Instagram,
 };
 
-function useChannelStats(conversations: Conversation[]) {
-  return useMemo(() => {
-    const stats: Record<
-      ChatChannel,
-      { total: number; unread: number; online: number; waiting: number }
-    > = {
-      whatsapp: { total: 0, unread: 0, online: 0, waiting: 0 },
-      telegram: { total: 0, unread: 0, online: 0, waiting: 0 },
-      instagram: { total: 0, unread: 0, online: 0, waiting: 0 },
-    };
-    for (const c of conversations) {
-      stats[c.channel].total += 1;
-      stats[c.channel].unread += c.unread;
-      if (c.status === "en línea") stats[c.channel].online += 1;
-      if (c.status === "esperando") stats[c.channel].waiting += 1;
-    }
-    return stats;
-  }, [conversations]);
+const estadoLabels: Record<EstadoConversacion, string> = {
+  abierta: "Abierta",
+  cerrada: "Cerrada",
+  archivada: "Archivada",
+};
+
+const estadoStyles: Record<EstadoConversacion, string> = {
+  abierta: "text-success",
+  cerrada: "text-muted-foreground",
+  archivada: "text-warning",
+};
+
+function formatHora(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
 }
 
-function ChannelPortal({
-  conversations,
-  onSelect,
-}: {
-  conversations: Conversation[];
-  onSelect: (channel: ChatChannel) => void;
-}) {
-  const stats = useChannelStats(conversations);
+function nombreConversacion(c: Conversacion) {
+  return c.cliente?.nombre ?? c.canalChatId;
+}
 
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {channelOrder.map((channel) => {
-        const Icon = channelIcons[channel];
-        const s = stats[channel];
-        return (
-          <button
-            key={channel}
-            type="button"
-            onClick={() => onSelect(channel)}
-            className={cn(
-              "group panel relative flex flex-col items-start gap-4 p-6 text-left transition-all",
-              "hover:-translate-y-0.5 hover:shadow-soft hover:ring-1",
-              channelStyles[channel].ring,
-            )}
-          >
-            <div className="flex w-full items-center justify-between">
-              <span
-                className={cn(
-                  "flex size-12 items-center justify-center rounded-2xl",
-                  channelStyles[channel].soft,
-                )}
-              >
-                <Icon className="size-6" />
-              </span>
-              {s.unread > 0 ? (
-                <Badge variant="secondary" className="tabular-nums">
-                  {s.unread} sin leer
-                </Badge>
-              ) : (
-                <Check className="size-5 text-muted-foreground" />
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium">{channelLabels[channel]}</h3>
-              <p className="text-sm text-muted-foreground">
-                {s.total} conversación{s.total === 1 ? "" : "es"} activa{s.total === 1 ? "" : "s"}
-              </p>
-            </div>
-
-            <div className="mt-2 grid w-full grid-cols-3 gap-2 border-t border-border pt-4">
-              <div className="text-center">
-                <p className="font-display text-xl font-medium">{s.total}</p>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-              </div>
-              <div className="text-center">
-                <p className="font-display text-xl font-medium text-success">{s.online}</p>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  En línea
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="font-display text-xl font-medium text-warning">{s.waiting}</p>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Esperando
-                </p>
-              </div>
-            </div>
-
-            <span
-              className={cn(
-                "absolute inset-x-6 bottom-0 h-1 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-                channelStyles[channel].dot,
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
+function inicial(nombre: string) {
+  return nombre.replace("@", "").slice(0, 1).toUpperCase();
 }
 
 export function ConversationsView() {
-  const [conversations, setConversations] = useState(demoConversations);
-  const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
-  const [activeId, setActiveId] = useState(demoConversations[0]!.id);
+  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [mensajesPorConversacion, setMensajesPorConversacion] = useState<Record<number, Mensaje[]>>(
+    {},
+  );
+  const [selectedChannel, setSelectedChannel] = useState<Canal | null>(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [reply, setReply] = useState("");
+  const [sinLeer, setSinLeer] = useState<Set<number>>(new Set());
+  const [cargandoMensajes, setCargandoMensajes] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const activeIdRef = useRef<number | null>(null);
+  const loadedConversationsRef = useRef<Set<number>>(new Set());
 
-  const active = conversations.find((c) => c.id === activeId)!;
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  const cargarMensajes = useCallback((id: number) => {
+    if (loadedConversationsRef.current.has(id)) return;
+    loadedConversationsRef.current.add(id);
+    setCargandoMensajes(true);
+    listMensajes(id)
+      .then((mensajes) => {
+        setMensajesPorConversacion((current) => ({ ...current, [id]: mensajes }));
+      })
+      .catch(() => {
+        toast.error("No se pudieron cargar los mensajes");
+        loadedConversationsRef.current.delete(id);
+      })
+      .finally(() => setCargandoMensajes(false));
+  }, []);
+
+  const abrirConversacion = useCallback(
+    (id: number) => {
+      setActiveId(id);
+      setSinLeer((prev) => {
+        if (!prev.has(id)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(id);
+        return siguiente;
+      });
+      getSocket().emit("conversacion:unirse", id);
+      cargarMensajes(id);
+    },
+    [cargarMensajes],
+  );
+
+  useEffect(() => {
+    listConversaciones()
+      .then((data) => {
+        setConversaciones(data);
+        const primera = data[0];
+        if (primera) abrirConversacion(primera.id);
+      })
+      .catch(() => toast.error("No se pudieron cargar las conversaciones"));
+  }, [abrirConversacion]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    socket.connect();
+
+    function onMensajeNuevo({
+      conversacionId,
+      mensaje,
+    }: {
+      conversacionId: number;
+      mensaje: Mensaje;
+    }) {
+      setMensajesPorConversacion((prev) => {
+        const actuales = prev[conversacionId] ?? [];
+        if (actuales.some((m) => m.id === mensaje.id)) return prev;
+        return { ...prev, [conversacionId]: [...actuales, mensaje] };
+      });
+      if (activeIdRef.current !== conversacionId) {
+        setSinLeer((prev) => new Set(prev).add(conversacionId));
+      }
+    }
+
+    function onConversacionActualizada(conversacion: Conversacion) {
+      setConversaciones((prev) => {
+        const existe = prev.some((c) => c.id === conversacion.id);
+        const siguiente = existe
+          ? prev.map((c) => (c.id === conversacion.id ? conversacion : c))
+          : [conversacion, ...prev];
+        return [...siguiente].sort((a, b) => {
+          const fa = a.ultimoMensajeAt ? new Date(a.ultimoMensajeAt).getTime() : 0;
+          const fb = b.ultimoMensajeAt ? new Date(b.ultimoMensajeAt).getTime() : 0;
+          return fb - fa;
+        });
+      });
+    }
+
+    socket.on("mensaje:nuevo", onMensajeNuevo);
+    socket.on("conversacion:actualizada", onConversacionActualizada);
+
+    return () => {
+      socket.off("mensaje:nuevo", onMensajeNuevo);
+      socket.off("conversacion:actualizada", onConversacionActualizada);
+      socket.disconnect();
+    };
+  }, []);
+
+  const active = conversaciones.find((c) => c.id === activeId) ?? null;
+  const mensajesActivos = activeId !== null ? (mensajesPorConversacion[activeId] ?? []) : [];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return conversations.filter(
+    return conversaciones.filter(
       (c) =>
-        (!selectedChannel || c.channel === selectedChannel) &&
-        (!q || c.name.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q)),
+        (!selectedChannel || c.canal === selectedChannel) &&
+        (!q ||
+          nombreConversacion(c).toLowerCase().includes(q) ||
+          c.canalChatId.toLowerCase().includes(q)),
     );
-  }, [conversations, query, selectedChannel]);
+  }, [conversaciones, query, selectedChannel]);
+
+  const stats = useMemo(() => {
+    const base: Record<Canal, { total: number; abiertas: number; sinLeer: number }> = {
+      whatsapp: { total: 0, abiertas: 0, sinLeer: 0 },
+      telegram: { total: 0, abiertas: 0, sinLeer: 0 },
+      instagram: { total: 0, abiertas: 0, sinLeer: 0 },
+    };
+    for (const c of conversaciones) {
+      base[c.canal].total += 1;
+      if (c.estado === "abierta") base[c.canal].abiertas += 1;
+      if (sinLeer.has(c.id)) base[c.canal].sinLeer += 1;
+    }
+    return base;
+  }, [conversaciones, sinLeer]);
 
   const kpis = [
+    { label: "Conversaciones", value: String(conversaciones.length), icon: MessageCircle },
     {
-      label: "Conversaciones activas",
-      value: String(conversations.filter((c) => c.status !== "resuelta").length),
-      icon: MessageCircle,
+      label: "Abiertas",
+      value: String(conversaciones.filter((c) => c.estado === "abierta").length),
+      icon: Check,
     },
-    {
-      label: "Resueltas hoy",
-      value: String(conversations.filter((c) => c.status === "resuelta").length + 12),
-      icon: CheckCheck,
-    },
-    { label: "Tiempo promedio", value: "2m 35s", icon: Clock },
-    { label: "Satisfacción", value: "96%", icon: Smile },
+    { label: "Sin leer", value: String(sinLeer.size), icon: Bot },
   ];
 
-  const send = (text: string, from: "agente" | "equipo" = "equipo") => {
-    const value = text.trim();
-    if (!value) return;
-    setConversations((list) =>
-      list.map((c) =>
-        c.id === activeId
-          ? {
-              ...c,
-              unread: 0,
-              preview: value,
-              lastTime: new Date().toTimeString().slice(0, 5),
-              messages: [
-                ...c.messages,
-                {
-                  id: Math.random().toString(36).slice(2, 9),
-                  from,
-                  text: value,
-                  time: new Date().toTimeString().slice(0, 5),
-                },
-              ],
-            }
-          : c,
-      ),
-    );
-    setReply("");
-    composer.current?.focus();
+  const enviar = async () => {
+    const contenido = reply.trim();
+    if (!contenido || activeId === null || enviando) return;
+    setEnviando(true);
+    try {
+      await enviarMensaje(activeId, { tipoContenido: "texto", contenido });
+      setReply("");
+      composer.current?.focus();
+    } catch {
+      toast.error("No se pudo enviar el mensaje");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const cambiarEstado = async (estado: EstadoConversacion) => {
+    if (activeId === null) return;
+    try {
+      await updateConversacion(activeId, { estado });
+    } catch {
+      toast.error("No se pudo actualizar el estado de la conversación");
+    }
   };
 
   return (
@@ -227,11 +257,11 @@ export function ConversationsView() {
       title={selectedChannel ? channelLabels[selectedChannel] : "Conversaciones"}
       actions={
         <span className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium">
-          <span className="size-2 animate-pulse rounded-full bg-success" /> IA conectada
+          <span className="size-2 animate-pulse rounded-full bg-success" /> Conectado en vivo
         </span>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         {kpis.map((kpi) => (
           <div key={kpi.label} className="panel flex items-center justify-between gap-3 p-4">
             <div>
@@ -246,7 +276,71 @@ export function ConversationsView() {
       {!selectedChannel ? (
         <div className="mt-4">
           <h2 className="mb-4 text-base font-medium">Selecciona un canal para atender</h2>
-          <ChannelPortal conversations={conversations} onSelect={setSelectedChannel} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {channelOrder.map((channel) => {
+              const Icon = channelIcons[channel];
+              const s = stats[channel];
+              return (
+                <button
+                  key={channel}
+                  type="button"
+                  onClick={() => setSelectedChannel(channel)}
+                  className={cn(
+                    "group panel relative flex flex-col items-start gap-4 p-6 text-left transition-all",
+                    "hover:-translate-y-0.5 hover:shadow-soft hover:ring-1",
+                    channelStyles[channel].ring,
+                  )}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span
+                      className={cn(
+                        "flex size-12 items-center justify-center rounded-2xl",
+                        channelStyles[channel].soft,
+                      )}
+                    >
+                      <Icon className="size-6" />
+                    </span>
+                    {s.sinLeer > 0 ? (
+                      <Badge variant="secondary" className="tabular-nums">
+                        {s.sinLeer} sin leer
+                      </Badge>
+                    ) : (
+                      <Check className="size-5 text-muted-foreground" />
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-medium">{channelLabels[channel]}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {s.total} conversación{s.total === 1 ? "" : "es"}
+                    </p>
+                  </div>
+
+                  <div className="mt-2 grid w-full grid-cols-2 gap-2 border-t border-border pt-4">
+                    <div className="text-center">
+                      <p className="font-display text-xl font-medium">{s.total}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Total
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-display text-xl font-medium text-success">{s.abiertas}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Abiertas
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={cn(
+                      "absolute inset-x-6 bottom-0 h-1 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
+                      channelStyles[channel].dot,
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
         <>
@@ -261,8 +355,7 @@ export function ConversationsView() {
             </Button>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:h-[680px] lg:grid-cols-[280px_minmax(0,1fr)_300px]">
-            {/* Canales */}
+          <div className="mt-4 grid gap-4 lg:h-[680px] lg:grid-cols-[280px_minmax(0,1fr)_280px]">
             <section className="panel flex min-h-0 flex-col p-3">
               <div className="flex items-center gap-2 px-1 pb-2">
                 <h2 className="text-sm font-medium">{channelLabels[selectedChannel]}</h2>
@@ -274,263 +367,199 @@ export function ConversationsView() {
                 placeholder="Buscar cliente"
                 className="mb-2"
               />
-              <div className="min-h-0 flex-1 space-y-4 overflow-auto pr-1">
-                {channelOrder
-                  .filter((channel) => channel === selectedChannel)
-                  .map((channel) => {
-                    const items = filtered.filter((c) => c.channel === channel);
-                    if (items.length === 0) return null;
-                    const pending = items.reduce((sum, c) => sum + c.unread, 0);
+              <div className="min-h-0 flex-1 space-y-1 overflow-auto pr-1">
+                {filtered
+                  .filter((c) => c.canal === selectedChannel)
+                  .map((c) => {
+                    const nombre = nombreConversacion(c);
+                    const preview = (mensajesPorConversacion[c.id] ?? []).at(-1)?.contenido;
                     return (
-                      <div key={channel}>
-                        <div className="flex items-center gap-2 px-1 pb-1.5">
-                          <span className={cn("size-2 rounded-full", channelStyles[channel].dot)} />
-                          <p className="text-sm font-medium">{channelLabels[channel]}</p>
-                          {pending > 0 ? (
-                            <Badge variant="secondary" className="ml-auto tabular-nums">
-                              {pending}
-                            </Badge>
-                          ) : null}
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => abrirConversacion(c.id)}
+                        className={cn(
+                          "w-full rounded-lg border p-2.5 text-left transition-colors",
+                          c.id === activeId
+                            ? "border-primary/40 bg-accent"
+                            : "border-transparent hover:bg-secondary",
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                            {inicial(nombre)}
+                          </span>
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium">{nombre}</p>
+                          <span className="text-[10px] tabular-nums text-muted-foreground">
+                            {formatHora(c.ultimoMensajeAt)}
+                          </span>
                         </div>
-                        <ul className="space-y-1">
-                          {items.map((c) => (
-                            <li key={c.id}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveId(c.id);
-                                  setConversations((list) =>
-                                    list.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x)),
-                                  );
-                                }}
-                                className={cn(
-                                  "w-full rounded-lg border p-2.5 text-left transition-colors",
-                                  c.id === activeId
-                                    ? "border-primary/40 bg-accent"
-                                    : "border-transparent hover:bg-secondary",
-                                )}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                                    {c.name.replace("@", "").slice(0, 1).toUpperCase()}
-                                  </span>
-                                  <p className="min-w-0 flex-1 truncate text-sm font-medium">
-                                    {c.name}
-                                  </p>
-                                  <span className="text-[10px] tabular-nums text-muted-foreground">
-                                    {c.lastTime}
-                                  </span>
-                                </div>
-                                <div className="mt-1 flex items-center gap-2">
-                                  <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                                    {c.preview}
-                                  </p>
-                                  {c.unread > 0 ? (
-                                    <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                                      {c.unread}
-                                    </span>
-                                  ) : (
-                                    <Check className="size-3.5 text-muted-foreground" />
-                                  )}
-                                </div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                            {preview ?? "Sin mensajes"}
+                          </p>
+                          {sinLeer.has(c.id) ? (
+                            <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                              •
+                            </span>
+                          ) : (
+                            <Check className="size-3.5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </button>
                     );
                   })}
-                {filtered.length === 0 ? (
-                  <p className="px-1 text-sm text-muted-foreground">Sin resultados.</p>
+                {filtered.filter((c) => c.canal === selectedChannel).length === 0 ? (
+                  <p className="px-1 text-sm text-muted-foreground">Sin conversaciones.</p>
                 ) : null}
               </div>
             </section>
 
-            {/* Chat */}
             <section className="panel flex min-h-0 flex-col overflow-hidden">
-              <header className="flex items-center gap-3 border-b border-border p-4">
-                <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                  {active.name.replace("@", "").slice(0, 1).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{active.name}</p>
-                  <p className={cn("text-xs capitalize", statusStyles[active.status])}>
-                    {channelLabels[active.channel]} · {active.status}
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon" aria-label="Etiquetar">
-                  <Tag className="size-4" />
-                </Button>
-                <Button variant="ghost" size="icon" aria-label="Destacar">
-                  <Star className="size-4" />
-                </Button>
-              </header>
-
-              <div className="min-h-0 flex-1 space-y-3 overflow-auto bg-secondary/30 p-4">
-                <p className="text-center text-[11px] font-medium text-muted-foreground">Hoy</p>
-                {active.messages.map((message) => {
-                  const mine = message.from !== "cliente";
-                  return (
-                    <div key={message.id} className={cn("flex gap-2", mine && "flex-row-reverse")}>
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-xs font-medium text-muted-foreground">
-                        {mine ? (
-                          <Bot className="size-3.5" />
-                        ) : (
-                          active.name.replace("@", "").slice(0, 1)
-                        )}
-                      </span>
-                      <div
-                        className={cn(
-                          "max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-soft",
-                          mine
-                            ? "rounded-tr-sm bg-primary text-primary-foreground"
-                            : "rounded-tl-sm bg-card text-card-foreground",
-                        )}
-                      >
-                        <p className="whitespace-pre-line">{message.text}</p>
-                        <p
-                          className={cn(
-                            "mt-1 text-[10px] tabular-nums",
-                            mine ? "opacity-70" : "text-muted-foreground",
-                          )}
-                        >
-                          {message.time} {message.from === "agente" ? "· IA" : ""}
-                        </p>
-                      </div>
+              {active ? (
+                <>
+                  <header className="flex items-center gap-3 border-b border-border p-4">
+                    <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-sm font-medium">
+                      {inicial(nombreConversacion(active))}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{nombreConversacion(active)}</p>
+                      <p className={cn("text-xs capitalize", estadoStyles[active.estado])}>
+                        {channelLabels[active.canal]} · {estadoLabels[active.estado]}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
+                    <Select value={active.estado} onValueChange={cambiarEstado}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(estadoLabels) as EstadoConversacion[]).map((estado) => (
+                          <SelectItem key={estado} value={estado}>
+                            {estadoLabels[estado]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </header>
 
-              <form
-                className="border-t border-border p-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  send(reply);
-                }}
-              >
-                <Textarea
-                  ref={composer}
-                  value={reply}
-                  onChange={(event) => setReply(event.target.value)}
-                  placeholder="Escribe tu mensaje o usa la IA para responder…"
-                  className="min-h-20 resize-none"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
+                  <div className="min-h-0 flex-1 space-y-3 overflow-auto bg-secondary/30 p-4">
+                    {cargandoMensajes && mensajesActivos.length === 0 ? (
+                      <p className="text-center text-sm text-muted-foreground">Cargando…</p>
+                    ) : mensajesActivos.length === 0 ? (
+                      <p className="text-center text-sm text-muted-foreground">
+                        Todavía no hay mensajes en esta conversación.
+                      </p>
+                    ) : (
+                      mensajesActivos.map((mensaje) => {
+                        const mine = mensaje.remitente !== "cliente";
+                        return (
+                          <div
+                            key={mensaje.id}
+                            className={cn("flex gap-2", mine && "flex-row-reverse")}
+                          >
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-xs font-medium text-muted-foreground">
+                              {mine ? (
+                                <Bot className="size-3.5" />
+                              ) : (
+                                inicial(nombreConversacion(active))
+                              )}
+                            </span>
+                            <div
+                              className={cn(
+                                "max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-soft",
+                                mine
+                                  ? "rounded-tr-sm bg-primary text-primary-foreground"
+                                  : "rounded-tl-sm bg-card text-card-foreground",
+                              )}
+                            >
+                              <p className="whitespace-pre-line">
+                                {mensaje.contenido ?? `[${mensaje.tipoContenido}]`}
+                              </p>
+                              <p
+                                className={cn(
+                                  "mt-1 text-[10px] tabular-nums",
+                                  mine ? "opacity-70" : "text-muted-foreground",
+                                )}
+                              >
+                                {formatHora(mensaje.createdAt)}
+                                {mensaje.remitente === "agente" ? " · agente" : ""}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <form
+                    className="border-t border-border p-3"
+                    onSubmit={(event) => {
                       event.preventDefault();
-                      send(reply);
-                    }
-                  }}
-                />
-                <div className="mt-2 flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setReply(active.suggestion)}
+                      void enviar();
+                    }}
                   >
-                    <Bot className="size-4" /> Sugerir con IA
-                  </Button>
-                  <Button type="submit" size="sm">
-                    <Send className="size-4" /> Enviar
-                  </Button>
+                    <Textarea
+                      ref={composer}
+                      value={reply}
+                      onChange={(event) => setReply(event.target.value)}
+                      placeholder="Escribe tu mensaje…"
+                      className="min-h-20 resize-none"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          void enviar();
+                        }
+                      }}
+                    />
+                    <div className="mt-2 flex items-center justify-end gap-2">
+                      <Button type="submit" size="sm" disabled={enviando}>
+                        <Send className="size-4" /> {enviando ? "Enviando…" : "Enviar"}
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                  Selecciona una conversación
                 </div>
-              </form>
+              )}
             </section>
 
-            {/* Cliente + IA */}
             <aside className="flex min-h-0 flex-col gap-4 overflow-auto lg:pr-1">
-              <section className="panel p-4">
-                <h2 className="text-sm font-medium">Información del cliente</h2>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                    {active.name.replace("@", "").slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{active.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{active.handle}</p>
+              {active ? (
+                <section className="panel p-4">
+                  <h2 className="text-sm font-medium">Información del cliente</h2>
+                  <div className="mt-3 flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-secondary text-sm font-medium">
+                      {inicial(nombreConversacion(active))}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{nombreConversacion(active)}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {channelLabels[active.canal]} · {active.canalChatId}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <ul className="mt-4 space-y-2 text-xs text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <Phone className="size-3.5" /> {active.phone}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Mail className="size-3.5" /> {active.email}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <MapPin className="size-3.5" /> {active.city}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Building2 className="size-3.5" /> Cliente desde {active.since}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <ShoppingCart className="size-3.5" /> {active.orders} pedidos
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CalendarClock className="size-3.5" /> Último: {active.lastOrder}
-                  </li>
-                </ul>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {active.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </section>
-
-              <section className="panel p-4">
-                <h2 className="text-sm font-medium">Asistente de IA</h2>
-                <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-3">
-                  <p className="text-xs font-medium text-primary">Sugerencia de respuesta</p>
-                  <p className="mt-2 text-sm">{active.suggestion}</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => send(active.suggestion, "agente")}
-                    >
-                      Usar respuesta
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setReply(active.suggestion)}
-                    >
-                      Editar
-                    </Button>
-                  </div>
-                </div>
-              </section>
-
-              <section className="panel p-4">
-                <h2 className="text-sm font-medium">Acciones rápidas</h2>
-                <div className="mt-3 space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => toast.success("Pedido creado desde la conversación")}
-                  >
-                    <ShoppingCart className="size-4" /> Crear pedido
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => toast.success("Reserva registrada para el cliente")}
-                  >
-                    <CalendarClock className="size-4" /> Crear reserva
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => toast.success("Link de pago enviado por el canal")}
-                  >
-                    <Link2 className="size-4" /> Generar link de pago
-                  </Button>
-                </div>
-              </section>
+                  <ul className="mt-4 space-y-2 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Phone className="size-3.5" /> {active.cliente?.telefono ?? "Sin registrar"}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Mail className="size-3.5" /> {active.cliente?.email ?? "Sin registrar"}
+                    </li>
+                  </ul>
+                  {!active.cliente ? (
+                    <p className="mt-3 rounded-lg border border-dashed border-border p-2 text-xs text-muted-foreground">
+                      Esta conversación todavía no está vinculada a un cliente registrado.
+                    </p>
+                  ) : null}
+                  {active.ticketId ? (
+                    <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-2 text-xs">
+                      Vinculada al ticket #{active.ticketId}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </aside>
           </div>
         </>
