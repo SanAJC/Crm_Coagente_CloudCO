@@ -150,24 +150,6 @@ export function DashboardView() {
           </ul>
         </section>
       </div>
-
-      <section className="panel mt-6 p-5">
-        <h2 className="text-lg font-medium">Atención en el menú</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Platos sin stock o desactivados que conviene revisar antes del turno de noche.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {outOfStock.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todo el menú está disponible.</p>
-          ) : (
-            outOfStock.map((product) => (
-              <Badge key={product.id} variant="destructive">
-                {product.name}
-              </Badge>
-            ))
-          )}
-        </div>
-      </section>
     </AppShell>
   );
 }
