@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ReservationsCalendar } from "@/components/reservations-calendar";
 import { currency, orderStageLabels, orderTotal, todayISO } from "@/lib/crm-data";
 import { useCrm } from "@/lib/crm-store";
+import { cn } from "@/lib/utils";
 
 export function DashboardView() {
   const { reservations, orders, supportTickets, products } = useCrm();
@@ -36,30 +37,40 @@ export function DashboardView() {
       value: String(todays.length),
       hint: `${todays.filter((r) => r.status === "confirmada").length} confirmadas`,
       icon: CalendarDays,
+      gradient: "bg-gradient-to-br from-iris-blue to-sky-blue",
+      text: "text-white",
     },
     {
       label: "Comensales esperados",
       value: String(guests),
       hint: "Incluye mesas en curso",
       icon: Users,
+      gradient: "bg-gradient-to-br from-chart-4 to-violet-wash",
+      text: "text-white",
     },
     {
       label: "Pedidos abiertos",
       value: String(openOrders.length),
       hint: `${orders.filter((o) => o.stage === "cocina").length} en cocina`,
       icon: Receipt,
+      gradient: "bg-gradient-to-br from-success to-mint-wash",
+      text: "text-white",
     },
     {
       label: "Tickets de atención",
       value: String(openTickets.length),
       hint: `${urgentTickets.length} urgentes`,
       icon: LifeBuoy,
+      gradient: "bg-gradient-to-br from-destructive to-warning",
+      text: "text-white",
     },
     {
       label: "Ventas del turno",
       value: currency(sales),
       hint: "Demo acumulada",
       icon: CircleDollarSign,
+      gradient: "bg-gradient-to-br from-warning to-solar-wash",
+      text: "text-ink",
     },
   ];
 
@@ -80,13 +91,24 @@ export function DashboardView() {
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="panel p-5">
-            <div className="flex items-start justify-between rounded-none">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{kpi.label}</p>
-              <kpi.icon className="size-4 text-muted-foreground" />
+          <div
+            key={kpi.label}
+            className={cn(
+              "relative overflow-hidden rounded-[var(--radius-sm)] p-5",
+              kpi.gradient,
+              kpi.text,
+            )}
+          >
+            <kpi.icon
+              aria-hidden="true"
+              strokeWidth={1.25}
+              className="pointer-events-none absolute inset-y-0 right-0 h-full w-auto translate-x-1/4 rotate-12 opacity-15"
+            />
+            <div className="relative">
+              <p className="text-xs font-medium uppercase tracking-wide opacity-80">{kpi.label}</p>
+              <p className="mt-3 text-3xl font-medium">{kpi.value}</p>
+              <p className="mt-1 text-xs opacity-70">{kpi.hint}</p>
             </div>
-            <p className="mt-3 text-3xl font-medium">{kpi.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{kpi.hint}</p>
           </div>
         ))}
       </div>

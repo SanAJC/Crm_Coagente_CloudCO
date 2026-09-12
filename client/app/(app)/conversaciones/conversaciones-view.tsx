@@ -47,10 +47,10 @@ const channelLabels: Record<Canal, string> = {
   instagram: "Instagram",
 };
 
-const channelStyles: Record<Canal, { dot: string; ring: string; soft: string }> = {
-  whatsapp: { dot: "bg-success", ring: "ring-success/30", soft: "bg-success/10 text-success" },
-  telegram: { dot: "bg-info", ring: "ring-info/30", soft: "bg-info/10 text-info" },
-  instagram: { dot: "bg-primary", ring: "ring-primary/30", soft: "bg-primary/10 text-primary" },
+const channelCardStyles: Record<Canal, { gradient: string; text: string }> = {
+  whatsapp: { gradient: "bg-gradient-to-br from-success to-mint-wash", text: "text-white" },
+  telegram: { gradient: "bg-gradient-to-br from-iris-blue to-sky-blue", text: "text-white" },
+  instagram: { gradient: "bg-gradient-to-br from-chart-4 to-peach-wash", text: "text-white" },
 };
 
 const channelIcons: Record<Canal, typeof MessageCircle> = {
@@ -280,63 +280,57 @@ export function ConversationsView() {
             {channelOrder.map((channel) => {
               const Icon = channelIcons[channel];
               const s = stats[channel];
+              const style = channelCardStyles[channel];
               return (
                 <button
                   key={channel}
                   type="button"
                   onClick={() => setSelectedChannel(channel)}
                   className={cn(
-                    "group panel relative flex flex-col items-start gap-4 p-6 text-left transition-all",
-                    "hover:-translate-y-0.5 hover:shadow-soft hover:ring-1",
-                    channelStyles[channel].ring,
+                    "group relative flex flex-col items-start gap-4 overflow-hidden rounded-[var(--radius-sm)] p-6 text-left transition-all",
+                    "hover:-translate-y-0.5 hover:shadow-soft hover:ring-2 hover:ring-white/50",
+                    style.gradient,
+                    style.text,
                   )}
                 >
-                  <div className="flex w-full items-center justify-between">
-                    <span
-                      className={cn(
-                        "flex size-12 items-center justify-center rounded-2xl",
-                        channelStyles[channel].soft,
-                      )}
-                    >
+                  <Icon
+                    aria-hidden="true"
+                    strokeWidth={1.25}
+                    className="pointer-events-none absolute inset-y-0 right-0 h-full w-auto translate-x-1/4 rotate-12 opacity-15"
+                  />
+
+                  <div className="relative flex w-full items-center justify-between">
+                    <span className="flex size-12 items-center justify-center rounded-2xl bg-white/15">
                       <Icon className="size-6" />
                     </span>
                     {s.sinLeer > 0 ? (
-                      <Badge variant="secondary" className="tabular-nums">
+                      <Badge variant="secondary" className="bg-white/20 text-white tabular-nums">
                         {s.sinLeer} sin leer
                       </Badge>
                     ) : (
-                      <Check className="size-5 text-muted-foreground" />
+                      <Check className="size-5 opacity-70" />
                     )}
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <h3 className="text-lg font-medium">{channelLabels[channel]}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm opacity-80">
                       {s.total} conversación{s.total === 1 ? "" : "es"}
                     </p>
                   </div>
 
-                  <div className="mt-2 grid w-full grid-cols-2 gap-2 border-t border-border pt-4">
+                  <div className="relative mt-2 grid w-full grid-cols-2 gap-2 border-t border-white/20 pt-4">
                     <div className="text-center">
                       <p className="font-display text-xl font-medium">{s.total}</p>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Total
-                      </p>
+                      <p className="text-[10px] uppercase tracking-wide opacity-70">Total</p>
                     </div>
                     <div className="text-center">
-                      <p className="font-display text-xl font-medium text-success">{s.abiertas}</p>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Abiertas
-                      </p>
+                      <p className="font-display text-xl font-medium">{s.abiertas}</p>
+                      <p className="text-[10px] uppercase tracking-wide opacity-70">Abiertas</p>
                     </div>
                   </div>
 
-                  <span
-                    className={cn(
-                      "absolute inset-x-6 bottom-0 h-1 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-                      channelStyles[channel].dot,
-                    )}
-                  />
+                  <span className="absolute inset-x-6 bottom-0 h-1 rounded-full bg-white/0 opacity-0 transition-opacity group-hover:bg-white/70 group-hover:opacity-100" />
                 </button>
               );
             })}
