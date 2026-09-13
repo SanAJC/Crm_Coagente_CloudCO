@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateBookingDto {
   @IsInt()
@@ -11,6 +11,15 @@ export class CreateBookingDto {
   @IsOptional()
   @IsDateString()
   fechaFin?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  personas?: number;
+
+  @IsOptional()
+  @IsString()
+  mesa?: string;
 
   @IsOptional()
   @IsString()

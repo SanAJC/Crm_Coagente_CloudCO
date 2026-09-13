@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { isFechaValida, isIdValido } from './booking-validators.js';
+import { isFechaValida, isIdValido, isPersonasValido } from './booking-validators.js';
 
 @Injectable()
 export class CreateBookingPipe implements PipeTransform {
@@ -14,6 +14,14 @@ export class CreateBookingPipe implements PipeTransform {
 
     if (value?.fechaFin !== undefined && !isFechaValida(value.fechaFin)) {
       throw new BadRequestException('fechaFin debe ser una fecha válida');
+    }
+
+    if (value?.personas !== undefined && !isPersonasValido(value.personas)) {
+      throw new BadRequestException('personas debe ser un número entero positivo');
+    }
+
+    if (value?.mesa !== undefined && typeof value.mesa !== 'string') {
+      throw new BadRequestException('mesa debe ser un texto');
     }
 
     return value;

@@ -1,5 +1,7 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import {
   CalendarDays,
   CalendarOff,
@@ -12,6 +14,15 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { createCliente, listClientes } from "@/api/clientes.api";
+import {
+  cancelReserva,
+  createReserva,
+  listReservas,
+  updateReserva,
+  type EstadoReserva,
+  type Reserva,
+} from "@/api/reservas.api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,23 +43,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  buildTimeSlots,
-  statusLabels,
-  todayISO,
-  weekdayLabels,
-  type Reservation,
-  type ReservationStatus,
-} from "@/lib/crm-data";
-import { newId, useCrm } from "@/lib/crm-store";
+import { buildTimeSlots, todayISO, weekdayLabels } from "@/lib/crm-data";
+import { useCrm } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
 
-const statuses: ReservationStatus[] = ["pendiente", "confirmada", "sentada", "cancelada"];
+const estados: EstadoReserva[] = ["pendiente", "confirmada", "completada", "cancelada"];
 
-const statusStyles: Record<ReservationStatus, string> = {
+const estadoLabels: Record<EstadoReserva, string> = {
+  pendiente: "Pendiente",
+  confirmada: "Confirmada",
+  completada: "Completada",
+  cancelada: "Cancelada",
+};
+
+const estadoStyles: Record<EstadoReserva, string> = {
   confirmada: "border-l-info bg-info/10",
   pendiente: "border-l-warning bg-warning/10",
-  sentada: "border-l-success bg-success/10",
+  completada: "border-l-success bg-success/10",
   cancelada: "border-l-destructive bg-destructive/10 opacity-70",
 };
 
@@ -65,17 +76,33 @@ export const longDate = (date: string) =>
     month: "long",
   });
 
-const emptyReservation = (date: string, time: string, table: string): Reservation => ({
-  id: newId(),
-  guest: "",
-  phone: "",
-  people: 2,
-  date,
-  time,
-  table,
-  status: "pendiente",
-  note: "",
-});
+function dateKey(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function timeKey(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (isAxiosError(error) && typeof error.response?.data?.message === "string") {
+    return error.response.data.message as string;
+  }
+  return fallback;
+}
+
+type Draft = {
+  id?: number;
+  clienteId: number | undefined;
+  date: string;
+  time: string;
+  personas: number;
+  mesa: string;
+  estado: EstadoReserva;
+  notas: string;
+};
 
 interface ReservationsCalendarProps {
   initialDate?: string;
@@ -90,22 +117,133 @@ export function ReservationsCalendar({
   lockToDay = false,
   fill = false,
 }: ReservationsCalendarProps) {
-  const { reservations, saveReservation, deleteReservation, calendarSettings } = useCrm();
+  const { calendarSettings } = useCrm();
+  const queryClient = useQueryClient();
   const [day, setDay] = useState(initialDate);
-  const [draft, setDraft] = useState<Reservation | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [clienteRapidoAbierto, setClienteRapidoAbierto] = useState(false);
+  const [clienteRapido, setClienteRapido] = useState({ nombre: "", telefono: "", email: "" });
+
+  const reservasQuery = useQuery({ queryKey: ["reservas"], queryFn: () => listReservas() });
+  const clientesQuery = useQuery({ queryKey: ["clientes"], queryFn: listClientes });
+
+  const clientes = clientesQuery.data ?? [];
 
   const slots = useMemo(() => buildTimeSlots(calendarSettings), [calendarSettings]);
   const dayOfWeek = new Date(`${day}T00:00:00`).getDay();
   const isClosed = calendarSettings.closedDays.includes(dayOfWeek);
 
   const dayList = useMemo(
-    () => reservations.filter((r) => r.date === day).sort((a, b) => a.time.localeCompare(b.time)),
-    [reservations, day],
+    () =>
+      (reservasQuery.data ?? [])
+        .filter((r) => r.fechaInicio && dateKey(r.fechaInicio) === day)
+        .sort((a, b) => timeKey(a.fechaInicio!).localeCompare(timeKey(b.fechaInicio!))),
+    [reservasQuery.data, day],
   );
   const guests = dayList
-    .filter((r) => r.status !== "cancelada")
-    .reduce((sum, r) => sum + r.people, 0);
+    .filter((r) => r.estado !== "cancelada")
+    .reduce((sum, r) => sum + (r.personas ?? 0), 0);
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ["reservas"] });
+
+  const crearMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof createReserva>[0]) => createReserva(dto),
+    onSuccess: () => {
+      invalidar();
+      setDraft(null);
+      toast.success("Reserva creada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo crear la reserva")),
+  });
+
+  const actualizarMutation = useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: Parameters<typeof updateReserva>[1] }) =>
+      updateReserva(id, dto),
+    onSuccess: () => {
+      invalidar();
+      setDraft(null);
+      toast.success("Reserva actualizada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo actualizar la reserva")),
+  });
+
+  const cancelarMutation = useMutation({
+    mutationFn: (id: number) => cancelReserva(id),
+    onSuccess: () => {
+      invalidar();
+      setDraft(null);
+      toast.success("Reserva cancelada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo cancelar la reserva")),
+  });
+
+  const crearClienteMutation = useMutation({
+    mutationFn: () =>
+      createCliente({
+        nombre: clienteRapido.nombre.trim(),
+        telefono: clienteRapido.telefono || undefined,
+        email: clienteRapido.email || undefined,
+      }),
+    onSuccess: (cliente) => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      setClienteRapidoAbierto(false);
+      setClienteRapido({ nombre: "", telefono: "", email: "" });
+      setDraft((current) => (current ? { ...current, clienteId: cliente.id } : current));
+      toast.success("Cliente creado");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo crear el cliente")),
+  });
+
+  const emptyDraft = (date: string, time: string): Draft => ({
+    clienteId: undefined,
+    date,
+    time,
+    personas: 2,
+    mesa: calendarSettings.tables[0] ?? "Mesa 1",
+    estado: "pendiente",
+    notas: "",
+  });
+
+  const draftFromReserva = (r: Reserva): Draft => ({
+    id: r.id,
+    clienteId: r.clienteId,
+    date: r.fechaInicio ? dateKey(r.fechaInicio) : day,
+    time: r.fechaInicio ? timeKey(r.fechaInicio) : slots[0] || "12:00",
+    personas: r.personas ?? 2,
+    mesa: r.mesa ?? calendarSettings.tables[0] ?? "Mesa 1",
+    estado: r.estado,
+    notas: r.notas ?? "",
+  });
+
+  const guardar = () => {
+    if (!draft) return;
+    if (draft.clienteId === undefined) {
+      toast.error("Elegí un cliente");
+      return;
+    }
+
+    const fechaInicio = new Date(`${draft.date}T${draft.time}:00`);
+    const fechaFin = new Date(fechaInicio.getTime() + 2 * 60 * 60 * 1000);
+
+    const dto = {
+      clienteId: draft.clienteId,
+      fechaInicio: fechaInicio.toISOString(),
+      fechaFin: fechaFin.toISOString(),
+      personas: draft.personas,
+      mesa: draft.mesa,
+      notas: draft.notas || undefined,
+      estado: draft.estado,
+    };
+
+    if (isNew) {
+      crearMutation.mutate(dto);
+    } else if (draft.id !== undefined) {
+      actualizarMutation.mutate({ id: draft.id, dto });
+    }
+  };
+
+  const guardando = crearMutation.isPending || actualizarMutation.isPending;
 
   return (
     <div className={cn(fill && "flex h-full min-h-0 flex-col")}>
@@ -165,7 +303,7 @@ export function ReservationsCalendar({
           </div>
         ) : (
           slots.map((slot) => {
-            const items = dayList.filter((r) => r.time === slot);
+            const items = dayList.filter((r) => r.fechaInicio && timeKey(r.fechaInicio) === slot);
             return (
               <div
                 key={slot}
@@ -175,29 +313,29 @@ export function ReservationsCalendar({
                   {slot}
                 </div>
                 <div className="flex flex-wrap gap-2 p-3">
-                  {items.map((reservation) => (
+                  {items.map((reserva) => (
                     <button
-                      key={reservation.id}
+                      key={reserva.id}
                       type="button"
                       onClick={() => {
-                        setDraft({ ...reservation });
+                        setDraft(draftFromReserva(reserva));
                         setIsNew(false);
                       }}
                       className={cn(
                         "w-full max-w-xs rounded-lg border border-border border-l-4 p-3 text-left transition-shadow hover:shadow-lift",
-                        statusStyles[reservation.status],
+                        estadoStyles[reserva.estado],
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-medium">{reservation.guest}</p>
-                        <Badge variant="outline">{statusLabels[reservation.status]}</Badge>
+                        <p className="truncate text-sm font-medium">{reserva.cliente.nombre}</p>
+                        <Badge variant="outline">{estadoLabels[reserva.estado]}</Badge>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {reservation.people} pax · {reservation.table}
+                        {reserva.personas ?? "—"} pax · {reserva.mesa ?? "Sin mesa"}
                       </p>
-                      {reservation.note ? (
+                      {reserva.notas ? (
                         <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {reservation.note}
+                          {reserva.notas}
                         </p>
                       ) : null}
                     </button>
@@ -207,7 +345,7 @@ export function ReservationsCalendar({
                     size="sm"
                     className="text-muted-foreground"
                     onClick={() => {
-                      setDraft(emptyReservation(day, slot, calendarSettings.tables[0] ?? "Mesa 1"));
+                      setDraft(emptyDraft(day, slot));
                       setIsNew(true);
                     }}
                   >
@@ -224,7 +362,7 @@ export function ReservationsCalendar({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{isNew ? "Nueva reserva" : "Editar reserva"}</DialogTitle>
-            <DialogDescription>Datos de contacto, franja y estado de la mesa.</DialogDescription>
+            <DialogDescription>Cliente, franja horaria y estado de la mesa.</DialogDescription>
           </DialogHeader>
           {draft ? (
             <form
@@ -232,29 +370,38 @@ export function ReservationsCalendar({
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!draft.guest.trim()) return;
-                saveReservation(draft);
-                setDraft(null);
-                toast.success(isNew ? "Reserva creada" : "Reserva actualizada");
+                guardar();
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="guest">Cliente</Label>
-                  <Input
-                    id="guest"
-                    value={draft.guest}
-                    onChange={(event) => setDraft({ ...draft, guest: event.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    value={draft.phone}
-                    onChange={(event) => setDraft({ ...draft, phone: event.target.value })}
-                  />
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Cliente</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={draft.clienteId !== undefined ? String(draft.clienteId) : ""}
+                      onValueChange={(value) => setDraft({ ...draft, clienteId: Number(value) })}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Elegir cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clientes.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Crear cliente nuevo"
+                      onClick={() => setClienteRapidoAbierto(true)}
+                    >
+                      <Plus className="size-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha</Label>
@@ -290,15 +437,17 @@ export function ReservationsCalendar({
                     type="number"
                     min={1}
                     max={calendarSettings.maxPartySize}
-                    value={draft.people}
-                    onChange={(event) => setDraft({ ...draft, people: Number(event.target.value) })}
+                    value={draft.personas}
+                    onChange={(event) =>
+                      setDraft({ ...draft, personas: Number(event.target.value) })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Mesa / zona</Label>
                   <Select
-                    value={draft.table}
-                    onValueChange={(value) => setDraft({ ...draft, table: value })}
+                    value={draft.mesa}
+                    onValueChange={(value) => setDraft({ ...draft, mesa: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -316,18 +465,16 @@ export function ReservationsCalendar({
               <div className="space-y-2">
                 <Label>Estado</Label>
                 <Select
-                  value={draft.status}
-                  onValueChange={(value) =>
-                    setDraft({ ...draft, status: value as ReservationStatus })
-                  }
+                  value={draft.estado}
+                  onValueChange={(value) => setDraft({ ...draft, estado: value as EstadoReserva })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {statuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {statusLabels[status]}
+                    {estados.map((estado) => (
+                      <SelectItem key={estado} value={estado}>
+                        {estadoLabels[estado]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -337,35 +484,98 @@ export function ReservationsCalendar({
                 <Label htmlFor="note">Nota interna</Label>
                 <Textarea
                   id="note"
-                  value={draft.note}
-                  onChange={(event) => setDraft({ ...draft, note: event.target.value })}
+                  value={draft.notas}
+                  onChange={(event) => setDraft({ ...draft, notas: event.target.value })}
                 />
               </div>
             </form>
           ) : null}
           <DialogFooter className="sm:justify-between">
-            {!isNew && draft ? (
+            {!isNew && draft?.id !== undefined ? (
               <Button
                 variant="ghost"
-                onClick={() => {
-                  deleteReservation(draft.id);
-                  setDraft(null);
-                  toast.success("Reserva eliminada");
-                }}
+                onClick={() => cancelarMutation.mutate(draft.id!)}
+                disabled={cancelarMutation.isPending}
               >
-                <Trash2 className="size-4" /> Eliminar
+                <Trash2 className="size-4" /> Cancelar reserva
               </Button>
             ) : (
               <span />
             )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setDraft(null)}>
-                Cancelar
+                Cerrar
               </Button>
-              <Button type="submit" form="reservation-form">
-                Guardar
+              <Button type="submit" form="reservation-form" disabled={guardando}>
+                {guardando ? "Guardando…" : "Guardar"}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={clienteRapidoAbierto} onOpenChange={setClienteRapidoAbierto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cliente nuevo</DialogTitle>
+            <DialogDescription>Solo lo básico para poder asociarlo a la reserva.</DialogDescription>
+          </DialogHeader>
+          <form
+            id="cliente-rapido-form"
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!clienteRapido.nombre.trim()) {
+                toast.error("Agregá el nombre");
+                return;
+              }
+              crearClienteMutation.mutate();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="cr-nombre">Nombre</Label>
+              <Input
+                id="cr-nombre"
+                value={clienteRapido.nombre}
+                onChange={(event) =>
+                  setClienteRapido({ ...clienteRapido, nombre: event.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cr-telefono">Teléfono</Label>
+              <Input
+                id="cr-telefono"
+                value={clienteRapido.telefono}
+                onChange={(event) =>
+                  setClienteRapido({ ...clienteRapido, telefono: event.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cr-email">Email (opcional)</Label>
+              <Input
+                id="cr-email"
+                type="email"
+                value={clienteRapido.email}
+                onChange={(event) =>
+                  setClienteRapido({ ...clienteRapido, email: event.target.value })
+                }
+              />
+            </div>
+          </form>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClienteRapidoAbierto(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="cliente-rapido-form"
+              disabled={crearClienteMutation.isPending}
+            >
+              {crearClienteMutation.isPending ? "Creando…" : "Crear cliente"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

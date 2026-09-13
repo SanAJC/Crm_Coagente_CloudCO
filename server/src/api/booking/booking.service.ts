@@ -27,6 +27,8 @@ export class BookingService {
       usuarioId,
       fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : undefined,
       fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : undefined,
+      personas: dto.personas,
+      mesa: dto.mesa,
       notas: dto.notas,
     });
   }
@@ -47,6 +49,8 @@ export class BookingService {
       usuarioId: dto.usuarioId,
       fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : undefined,
       fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : undefined,
+      personas: dto.personas,
+      mesa: dto.mesa,
       notas: dto.notas,
       estado: dto.estado,
     });

@@ -179,6 +179,8 @@ model Reserva {
   fechaReserva DateTime  @default(now()) @map("fecha_reserva")
   fechaInicio  DateTime? @map("fecha_inicio")
   fechaFin     DateTime? @map("fecha_fin")
+  personas     Int?
+  mesa         String?   @db.VarChar(20)
   estado       String    @default("pendiente") @db.VarChar(20)
   notas        String?
   createdAt    DateTime  @default(now()) @map("created_at")

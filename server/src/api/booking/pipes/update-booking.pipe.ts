@@ -3,6 +3,7 @@ import {
   isEstadoValido,
   isFechaValida,
   isIdValido,
+  isPersonasValido,
 } from './booking-validators.js';
 
 @Injectable()
@@ -28,6 +29,14 @@ export class UpdateBookingPipe implements PipeTransform {
       throw new BadRequestException(
         'estado debe ser pendiente, confirmada, cancelada o completada',
       );
+    }
+
+    if (value?.personas !== undefined && !isPersonasValido(value.personas)) {
+      throw new BadRequestException('personas debe ser un número entero positivo');
+    }
+
+    if (value?.mesa !== undefined && typeof value.mesa !== 'string') {
+      throw new BadRequestException('mesa debe ser un texto');
     }
 
     return value;

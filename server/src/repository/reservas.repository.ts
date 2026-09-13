@@ -8,6 +8,8 @@ const RESERVA_SELECT = {
   fechaReserva: true,
   fechaInicio: true,
   fechaFin: true,
+  personas: true,
+  mesa: true,
   estado: true,
   notas: true,
   createdAt: true,
@@ -21,6 +23,8 @@ export interface CrearReservaData {
   usuarioId: number;
   fechaInicio?: Date;
   fechaFin?: Date;
+  personas?: number;
+  mesa?: string;
   notas?: string;
 }
 
@@ -29,6 +33,8 @@ export interface ActualizarReservaData {
   usuarioId?: number;
   fechaInicio?: Date;
   fechaFin?: Date;
+  personas?: number;
+  mesa?: string;
   notas?: string;
   estado?: string;
 }
