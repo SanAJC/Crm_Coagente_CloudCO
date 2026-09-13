@@ -1,9 +1,20 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  getConfiguracion,
+  listMesas,
+  createMesa,
+  deleteMesa,
+  updateConfiguracion,
+  type ConfiguracionNegocio,
+  type UpdateConfiguracionInput,
+} from "@/api/settings.api";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +52,6 @@ import {
   roleLabels,
   roles,
   weekdayLabels,
-  type CalendarSettings,
   type Role,
   type TeamMember,
 } from "@/lib/crm-data";
@@ -59,38 +69,90 @@ const emptyMember = (): TeamMember => ({
   active: true,
 });
 
+function errorMessage(error: unknown, fallback: string) {
+  if (isAxiosError(error) && typeof error.response?.data?.message === "string") {
+    return error.response.data.message as string;
+  }
+  return fallback;
+}
+
 function CalendarSettingsPanel() {
-  const { calendarSettings, saveCalendarSettings } = useCrm();
-  const [draft, setDraft] = useState<CalendarSettings>(calendarSettings);
+  const queryClient = useQueryClient();
+  const configQuery = useQuery({ queryKey: ["configuracion-negocio"], queryFn: getConfiguracion });
+  const mesasQuery = useQuery({ queryKey: ["mesas-todas"], queryFn: () => listMesas() });
+  const [draft, setDraft] = useState<UpdateConfiguracionInput | null>(null);
+  const [loadedConfig, setLoadedConfig] = useState<ConfiguracionNegocio | null>(null);
   const [newTable, setNewTable] = useState("");
 
+  if (configQuery.data && configQuery.data !== loadedConfig) {
+    const c = configQuery.data;
+    setLoadedConfig(c);
+    setDraft({
+      horaApertura: c.horaApertura,
+      horaCierre: c.horaCierre,
+      intervaloMinutos: c.intervaloMinutos,
+      bufferMinutos: c.bufferMinutos,
+      tamanoMaximoGrupo: c.tamanoMaximoGrupo,
+      diasCerrados: c.diasCerrados,
+    });
+  }
+
+  const invalidarMesas = () => {
+    queryClient.invalidateQueries({ queryKey: ["mesas-todas"] });
+    queryClient.invalidateQueries({ queryKey: ["mesas"] });
+  };
+
+  const guardarMutation = useMutation({
+    mutationFn: (dto: UpdateConfiguracionInput) => updateConfiguracion(dto),
+    onSuccess: (config: ConfiguracionNegocio) => {
+      queryClient.setQueryData(["configuracion-negocio"], config);
+      toast.success("Configuración del calendario actualizada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo actualizar la configuración")),
+  });
+
+  const crearMesaMutation = useMutation({
+    mutationFn: (nombre: string) => createMesa(nombre),
+    onSuccess: () => {
+      invalidarMesas();
+      setNewTable("");
+      toast.success("Mesa agregada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo agregar la mesa")),
+  });
+
+  const quitarMesaMutation = useMutation({
+    mutationFn: (id: number) => deleteMesa(id),
+    onSuccess: () => {
+      invalidarMesas();
+      toast.success("Mesa quitada");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo quitar la mesa")),
+  });
+
   const toggleDay = (day: number) => {
-    setDraft((current) => ({
-      ...current,
-      closedDays: current.closedDays.includes(day)
-        ? current.closedDays.filter((d) => d !== day)
-        : [...current.closedDays, day],
-    }));
+    setDraft((current) => {
+      if (!current) return current;
+      const dias = current.diasCerrados ?? [];
+      return {
+        ...current,
+        diasCerrados: dias.includes(day) ? dias.filter((d) => d !== day) : [...dias, day],
+      };
+    });
   };
 
-  const addTable = () => {
-    const name = newTable.trim();
-    if (!name || draft.tables.includes(name)) return;
-    setDraft((current) => ({ ...current, tables: [...current.tables, name] }));
-    setNewTable("");
-  };
+  const mesasActivas = (mesasQuery.data ?? []).filter((m) => m.activa);
 
-  const removeTable = (name: string) => {
-    setDraft((current) => ({ ...current, tables: current.tables.filter((t) => t !== name) }));
-  };
+  if (!draft) {
+    return <div className="panel p-6 text-sm text-graphite">Cargando configuración…</div>;
+  }
 
   return (
     <form
       className="panel space-y-6 p-6"
       onSubmit={(event) => {
         event.preventDefault();
-        saveCalendarSettings(draft);
-        toast.success("Configuración del calendario actualizada");
+        guardarMutation.mutate(draft);
       }}
     >
       <div>
@@ -103,8 +165,8 @@ function CalendarSettingsPanel() {
             <Input
               id="openTime"
               type="time"
-              value={draft.openTime}
-              onChange={(event) => setDraft({ ...draft, openTime: event.target.value })}
+              value={draft.horaApertura}
+              onChange={(event) => setDraft({ ...draft, horaApertura: event.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -112,15 +174,15 @@ function CalendarSettingsPanel() {
             <Input
               id="closeTime"
               type="time"
-              value={draft.closeTime}
-              onChange={(event) => setDraft({ ...draft, closeTime: event.target.value })}
+              value={draft.horaCierre}
+              onChange={(event) => setDraft({ ...draft, horaCierre: event.target.value })}
             />
           </div>
           <div className="space-y-2">
             <Label>Duración del turno</Label>
             <Select
-              value={String(draft.slotIntervalMinutes)}
-              onValueChange={(value) => setDraft({ ...draft, slotIntervalMinutes: Number(value) })}
+              value={String(draft.intervaloMinutos)}
+              onValueChange={(value) => setDraft({ ...draft, intervaloMinutos: Number(value) })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -137,8 +199,8 @@ function CalendarSettingsPanel() {
           <div className="space-y-2">
             <Label>Buffer entre reservas</Label>
             <Select
-              value={String(draft.bufferMinutes)}
-              onValueChange={(value) => setDraft({ ...draft, bufferMinutes: Number(value) })}
+              value={String(draft.bufferMinutos)}
+              onValueChange={(value) => setDraft({ ...draft, bufferMinutos: Number(value) })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -158,8 +220,10 @@ function CalendarSettingsPanel() {
               id="maxPartySize"
               type="number"
               min={1}
-              value={draft.maxPartySize}
-              onChange={(event) => setDraft({ ...draft, maxPartySize: Number(event.target.value) })}
+              value={draft.tamanoMaximoGrupo}
+              onChange={(event) =>
+                setDraft({ ...draft, tamanoMaximoGrupo: Number(event.target.value) })
+              }
             />
           </div>
         </div>
@@ -172,7 +236,7 @@ function CalendarSettingsPanel() {
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {weekdayLabels.map((label, day) => {
-            const closed = draft.closedDays.includes(day);
+            const closed = (draft.diasCerrados ?? []).includes(day);
             return (
               <button
                 key={label}
@@ -193,22 +257,26 @@ function CalendarSettingsPanel() {
       <div>
         <h2 className="text-sm font-medium text-ink">Mesas y zonas</h2>
         <p className="mt-1 text-xs text-graphite">
-          Estas opciones alimentan el selector de mesa al crear una reserva.
+          Estas opciones alimentan el selector de mesa al crear una reserva o un pedido en físico.
+          Se guardan al toque, no hace falta &quot;Guardar cambios&quot;.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {draft.tables.map((table) => (
-            <Badge key={table} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2">
-              {table}
+          {mesasActivas.map((mesa) => (
+            <Badge key={mesa.id} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2">
+              {mesa.nombre}
               <button
                 type="button"
-                aria-label={`Quitar ${table}`}
-                onClick={() => removeTable(table)}
+                aria-label={`Quitar ${mesa.nombre}`}
+                onClick={() => quitarMesaMutation.mutate(mesa.id)}
                 className="rounded-full p-0.5 hover:bg-mist-gray"
               >
                 <X className="size-3" />
               </button>
             </Badge>
           ))}
+          {mesasActivas.length === 0 ? (
+            <p className="text-xs text-graphite">Todavía no hay mesas cargadas.</p>
+          ) : null}
         </div>
         <div className="mt-3 flex max-w-sm gap-2">
           <Input
@@ -218,18 +286,25 @@ function CalendarSettingsPanel() {
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                addTable();
+                if (newTable.trim()) crearMesaMutation.mutate(newTable.trim());
               }
             }}
           />
-          <Button type="button" variant="outline" onClick={addTable}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={crearMesaMutation.isPending}
+            onClick={() => newTable.trim() && crearMesaMutation.mutate(newTable.trim())}
+          >
             <Plus className="size-4" /> Agregar
           </Button>
         </div>
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit">Guardar cambios</Button>
+        <Button type="submit" disabled={guardarMutation.isPending}>
+          {guardarMutation.isPending ? "Guardando…" : "Guardar cambios"}
+        </Button>
       </div>
     </form>
   );

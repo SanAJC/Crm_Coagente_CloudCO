@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { listReservas } from "@/api/reservas.api";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,11 +20,20 @@ import { currency, orderStageLabels, orderTotal, todayISO } from "@/lib/crm-data
 import { useCrm } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
 
-export function DashboardView() {
-  const { reservations, orders, supportTickets, products } = useCrm();
+function esHoy(fechaIso: string) {
+  const d = new Date(fechaIso);
+  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return key === todayISO;
+}
 
-  const todays = reservations.filter((r) => r.date === todayISO && r.status !== "cancelada");
-  const guests = todays.reduce((sum, r) => sum + r.people, 0);
+export function DashboardView() {
+  const { orders, supportTickets, products } = useCrm();
+  const reservasQuery = useQuery({ queryKey: ["reservas"], queryFn: () => listReservas() });
+
+  const todays = (reservasQuery.data ?? []).filter(
+    (r) => r.fechaInicio && esHoy(r.fechaInicio) && r.estado !== "cancelada",
+  );
+  const guests = todays.reduce((sum, r) => sum + (r.personas ?? 0), 0);
   const openOrders = orders.filter((o) => o.stage !== "cerrado");
   const sales = orders.reduce((sum, o) => sum + orderTotal(o), 0);
   const openTickets = supportTickets.filter((t) => t.status !== "cerrado");
@@ -35,7 +46,7 @@ export function DashboardView() {
     {
       label: "Reservas hoy",
       value: String(todays.length),
-      hint: `${todays.filter((r) => r.status === "confirmada").length} confirmadas`,
+      hint: `${todays.filter((r) => r.estado === "confirmada").length} confirmadas`,
       icon: CalendarDays,
       gradient: "bg-gradient-to-br from-iris-blue to-sky-blue",
       text: "text-white",

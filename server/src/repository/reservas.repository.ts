@@ -9,13 +9,14 @@ const RESERVA_SELECT = {
   fechaInicio: true,
   fechaFin: true,
   personas: true,
-  mesa: true,
+  mesaId: true,
   estado: true,
   notas: true,
   createdAt: true,
   updatedAt: true,
   cliente: { select: { id: true, nombre: true } },
   usuario: { select: { id: true, nombre: true } },
+  mesa: { select: { id: true, nombre: true } },
 } as const;
 
 export interface CrearReservaData {
@@ -24,7 +25,7 @@ export interface CrearReservaData {
   fechaInicio?: Date;
   fechaFin?: Date;
   personas?: number;
-  mesa?: string;
+  mesaId?: number;
   notas?: string;
 }
 
@@ -34,7 +35,7 @@ export interface ActualizarReservaData {
   fechaInicio?: Date;
   fechaFin?: Date;
   personas?: number;
-  mesa?: string;
+  mesaId?: number;
   notas?: string;
   estado?: string;
 }
@@ -64,6 +65,10 @@ export class ReservasRepository {
 
   findUsuarioById(usuarioId: number) {
     return this.prisma.usuario.findUnique({ where: { id: usuarioId } });
+  }
+
+  findMesaById(mesaId: number) {
+    return this.prisma.mesa.findUnique({ where: { id: mesaId } });
   }
 
   create(data: CrearReservaData) {

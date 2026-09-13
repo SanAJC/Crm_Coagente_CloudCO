@@ -21,6 +21,7 @@ export type PedidoDTO = {
   clienteId: number;
   reservaId: number | null;
   usuarioId: number | null;
+  mesaId: number | null;
   fechaPedido: string;
   estado: EstadoPedido;
   total: string;
@@ -29,6 +30,7 @@ export type PedidoDTO = {
   updatedAt: string;
   cliente: { id: number; nombre: string };
   usuario: { id: number; nombre: string } | null;
+  mesa: { id: number; nombre: string } | null;
   pedidoDetalles: PedidoItemDTO[];
 };
 
@@ -69,6 +71,7 @@ export async function getPedido(id: number): Promise<Pedido> {
 export async function createPedido(dto: {
   clienteId: number;
   direccionEnvio?: string;
+  mesaId?: number;
 }): Promise<Pedido> {
   const { data } = await api.post<PedidoDTO>("/pedidos", dto);
   return normalizar(data);
@@ -76,7 +79,7 @@ export async function createPedido(dto: {
 
 export async function updatePedido(
   id: number,
-  dto: { clienteId?: number; direccionEnvio?: string; estado?: EstadoPedido },
+  dto: { clienteId?: number; direccionEnvio?: string; estado?: EstadoPedido; mesaId?: number },
 ): Promise<Pedido> {
   const { data } = await api.patch<PedidoDTO>(`/pedidos/${id}`, dto);
   return normalizar(data);

@@ -21,6 +21,9 @@ export class BookingService {
 
   async create(dto: CreateBookingDto, usuarioId: number) {
     await this.validarCliente(dto.clienteId);
+    if (dto.mesaId !== undefined) {
+      await this.validarMesa(dto.mesaId);
+    }
 
     return this.reservasRepository.create({
       clienteId: dto.clienteId,
@@ -28,7 +31,7 @@ export class BookingService {
       fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : undefined,
       fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : undefined,
       personas: dto.personas,
-      mesa: dto.mesa,
+      mesaId: dto.mesaId,
       notas: dto.notas,
     });
   }
@@ -44,13 +47,17 @@ export class BookingService {
       await this.validarUsuario(dto.usuarioId);
     }
 
+    if (dto.mesaId !== undefined) {
+      await this.validarMesa(dto.mesaId);
+    }
+
     return this.reservasRepository.update(id, {
       clienteId: dto.clienteId,
       usuarioId: dto.usuarioId,
       fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : undefined,
       fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : undefined,
       personas: dto.personas,
-      mesa: dto.mesa,
+      mesaId: dto.mesaId,
       notas: dto.notas,
       estado: dto.estado,
     });
@@ -72,6 +79,13 @@ export class BookingService {
     const usuario = await this.reservasRepository.findUsuarioById(usuarioId);
     if (!usuario) {
       throw new BadRequestException('El usuario indicado no existe');
+    }
+  }
+
+  private async validarMesa(mesaId: number) {
+    const mesa = await this.reservasRepository.findMesaById(mesaId);
+    if (!mesa) {
+      throw new BadRequestException('La mesa indicada no existe');
     }
   }
 }

@@ -23,8 +23,8 @@ export class UpdateBookingDto {
   personas?: number;
 
   @IsOptional()
-  @IsString()
-  mesa?: string;
+  @IsInt()
+  mesaId?: number;
 
   @IsOptional()
   @IsString()

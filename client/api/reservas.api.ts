@@ -10,13 +10,14 @@ export type Reserva = {
   fechaInicio: string | null;
   fechaFin: string | null;
   personas: number | null;
-  mesa: string | null;
+  mesaId: number | null;
   estado: EstadoReserva;
   notas: string | null;
   createdAt: string;
   updatedAt: string;
   cliente: { id: number; nombre: string };
   usuario: { id: number; nombre: string } | null;
+  mesa: { id: number; nombre: string } | null;
 };
 
 export async function listReservas(estado?: EstadoReserva): Promise<Reserva[]> {
@@ -31,7 +32,7 @@ export type CreateReservaInput = {
   fechaInicio?: string;
   fechaFin?: string;
   personas?: number;
-  mesa?: string;
+  mesaId?: number;
   notas?: string;
 };
 

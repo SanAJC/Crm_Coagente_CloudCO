@@ -24,11 +24,15 @@ export class OrderService {
     if (dto.reservaId !== undefined) {
       await this.validarReserva(dto.reservaId);
     }
+    if (dto.mesaId !== undefined) {
+      await this.validarMesa(dto.mesaId);
+    }
 
     return this.pedidosRepository.create({
       clienteId: dto.clienteId,
       reservaId: dto.reservaId,
       usuarioId,
+      mesaId: dto.mesaId,
       total: dto.total,
       direccionEnvio: dto.direccionEnvio,
     });
@@ -45,6 +49,9 @@ export class OrderService {
     }
     if (dto.usuarioId !== undefined) {
       await this.validarUsuario(dto.usuarioId);
+    }
+    if (dto.mesaId !== undefined) {
+      await this.validarMesa(dto.mesaId);
     }
 
     return this.pedidosRepository.update(id, dto);
@@ -73,6 +80,13 @@ export class OrderService {
     const usuario = await this.pedidosRepository.findUsuarioById(usuarioId);
     if (!usuario) {
       throw new BadRequestException('El usuario indicado no existe');
+    }
+  }
+
+  private async validarMesa(mesaId: number) {
+    const mesa = await this.pedidosRepository.findMesaById(mesaId);
+    if (!mesa) {
+      throw new BadRequestException('La mesa indicada no existe');
     }
   }
 }

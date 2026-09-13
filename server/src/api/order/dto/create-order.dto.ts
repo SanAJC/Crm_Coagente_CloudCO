@@ -9,6 +9,10 @@ export class CreateOrderDto {
   reservaId?: number;
 
   @IsOptional()
+  @IsInt()
+  mesaId?: number;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   total?: number;

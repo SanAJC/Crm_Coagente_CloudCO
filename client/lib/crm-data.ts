@@ -8,20 +8,6 @@ export type Product = {
   description: string;
 };
 
-export type ReservationStatus = "confirmada" | "pendiente" | "sentada" | "cancelada";
-
-export type Reservation = {
-  id: string;
-  guest: string;
-  phone: string;
-  people: number;
-  date: string; // yyyy-mm-dd
-  time: string; // HH:mm
-  table: string;
-  status: ReservationStatus;
-  note: string;
-};
-
 export type OrderStage = "nuevo" | "cocina" | "servido" | "cerrado";
 
 export type OrderItem = { productId: string; name: string; qty: number; price: number };
@@ -139,86 +125,6 @@ const iso = (offsetDays = 0) => {
 };
 
 export const todayISO = iso(0);
-
-export const demoReservations: Reservation[] = [
-  {
-    id: "r1",
-    guest: "Camila Restrepo",
-    phone: "+57 310 442 1180",
-    people: 2,
-    date: iso(0),
-    time: "12:30",
-    table: "Mesa 4",
-    status: "confirmada",
-    note: "Aniversario, mesa junto a la ventana.",
-  },
-  {
-    id: "r2",
-    guest: "Andrés Gómez",
-    phone: "+57 300 118 7742",
-    people: 4,
-    date: iso(0),
-    time: "13:00",
-    table: "Mesa 9",
-    status: "sentada",
-    note: "Un comensal sin gluten.",
-  },
-  {
-    id: "r3",
-    guest: "Familia Vélez",
-    phone: "+57 315 660 2231",
-    people: 6,
-    date: iso(0),
-    time: "19:30",
-    table: "Salón privado",
-    status: "confirmada",
-    note: "Silla para bebé.",
-  },
-  {
-    id: "r4",
-    guest: "Laura Mendoza",
-    phone: "+57 312 774 5590",
-    people: 3,
-    date: iso(0),
-    time: "20:00",
-    table: "Mesa 2",
-    status: "pendiente",
-    note: "Reservó por el agente de IA.",
-  },
-  {
-    id: "r5",
-    guest: "Grupo Nexus",
-    phone: "+57 601 442 0090",
-    people: 10,
-    date: iso(1),
-    time: "13:30",
-    table: "Terraza",
-    status: "confirmada",
-    note: "Almuerzo corporativo, factura a nombre de la empresa.",
-  },
-  {
-    id: "r6",
-    guest: "Julián Ortega",
-    phone: "+57 318 220 4413",
-    people: 2,
-    date: iso(1),
-    time: "20:30",
-    table: "Barra",
-    status: "pendiente",
-    note: "Pidió maridaje de vinos.",
-  },
-  {
-    id: "r7",
-    guest: "Sofía Bermúdez",
-    phone: "+57 320 555 7781",
-    people: 5,
-    date: iso(2),
-    time: "19:00",
-    table: "Mesa 11",
-    status: "cancelada",
-    note: "Canceló por viaje.",
-  },
-];
 
 export const demoOrders: Order[] = [
   {
@@ -378,13 +284,6 @@ export const ticketStatusLabels: Record<TicketStatus, string> = {
   cerrado: "Cerrado",
 };
 
-export const statusLabels: Record<ReservationStatus, string> = {
-  confirmada: "Confirmada",
-  pendiente: "Pendiente",
-  sentada: "En mesa",
-  cancelada: "Cancelada",
-};
-
 export type Role = "Administrador" | "Gerente" | "Mesero" | "Cocina";
 
 export const roles: Role[] = ["Administrador", "Gerente", "Mesero", "Cocina"];
@@ -476,16 +375,6 @@ export type CalendarSettings = {
 };
 
 export const weekdayLabels = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-
-export const defaultCalendarSettings: CalendarSettings = {
-  openTime: "12:00",
-  closeTime: "22:30",
-  slotIntervalMinutes: 30,
-  bufferMinutes: 15,
-  maxPartySize: 12,
-  closedDays: [1],
-  tables: ["Mesa 1", "Mesa 2", "Mesa 4", "Mesa 9", "Mesa 11", "Barra", "Terraza", "Salón privado"],
-};
 
 function toMinutes(time: string): number {
   const [h = 0, m = 0] = time.split(":").map(Number);

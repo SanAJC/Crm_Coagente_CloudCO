@@ -12,6 +12,10 @@ export class CreateOrderPipe implements PipeTransform {
       throw new BadRequestException('reservaId debe ser un número entero positivo');
     }
 
+    if (value?.mesaId !== undefined && !isIdValido(value.mesaId)) {
+      throw new BadRequestException('mesaId debe ser un número entero positivo');
+    }
+
     if (value?.total !== undefined && !isTotalValido(value.total)) {
       throw new BadRequestException('total debe ser un número mayor o igual a 0');
     }

@@ -6,6 +6,7 @@ const PEDIDO_SELECT = {
   clienteId: true,
   reservaId: true,
   usuarioId: true,
+  mesaId: true,
   fechaPedido: true,
   estado: true,
   total: true,
@@ -14,6 +15,7 @@ const PEDIDO_SELECT = {
   updatedAt: true,
   cliente: { select: { id: true, nombre: true } },
   usuario: { select: { id: true, nombre: true } },
+  mesa: { select: { id: true, nombre: true } },
   pedidoDetalles: {
     select: {
       id: true,
@@ -30,6 +32,7 @@ export interface CrearPedidoData {
   clienteId: number;
   reservaId?: number;
   usuarioId: number;
+  mesaId?: number;
   total?: number;
   direccionEnvio?: string;
 }
@@ -38,6 +41,7 @@ export interface ActualizarPedidoData {
   clienteId?: number;
   reservaId?: number;
   usuarioId?: number;
+  mesaId?: number;
   total?: number;
   direccionEnvio?: string;
   estado?: string;
@@ -72,6 +76,10 @@ export class PedidosRepository {
 
   findUsuarioById(usuarioId: number) {
     return this.prisma.usuario.findUnique({ where: { id: usuarioId } });
+  }
+
+  findMesaById(mesaId: number) {
+    return this.prisma.mesa.findUnique({ where: { id: mesaId } });
   }
 
   create(data: CrearPedidoData) {

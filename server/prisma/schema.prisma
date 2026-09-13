@@ -180,7 +180,7 @@ model Reserva {
   fechaInicio  DateTime? @map("fecha_inicio")
   fechaFin     DateTime? @map("fecha_fin")
   personas     Int?
-  mesa         String?   @db.VarChar(20)
+  mesaId       Int?      @map("mesa_id")
   estado       String    @default("pendiente") @db.VarChar(20)
   notas        String?
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -188,6 +188,7 @@ model Reserva {
 
   cliente Cliente  @relation(fields: [clienteId], references: [id])
   usuario Usuario? @relation(fields: [usuarioId], references: [id])
+  mesa    Mesa?    @relation(fields: [mesaId], references: [id])
   pedidos Pedido[]
 
   @@index([clienteId], map: "idx_reservas_cliente")
@@ -203,6 +204,7 @@ model Pedido {
   clienteId      Int      @map("cliente_id")
   reservaId      Int?     @map("reserva_id")
   usuarioId      Int?     @map("usuario_id")
+  mesaId         Int?     @map("mesa_id")
   fechaPedido    DateTime @default(now()) @map("fecha_pedido")
   estado         String   @default("pendiente") @db.VarChar(20)
   total          Decimal  @default(0) @db.Decimal(12, 2)
@@ -213,6 +215,7 @@ model Pedido {
   cliente        Cliente         @relation(fields: [clienteId], references: [id])
   reserva        Reserva?        @relation(fields: [reservaId], references: [id])
   usuario        Usuario?        @relation(fields: [usuarioId], references: [id])
+  mesa           Mesa?           @relation(fields: [mesaId], references: [id])
   pedidoDetalles PedidoDetalle[]
   tickets        Ticket[]
 
@@ -314,4 +317,33 @@ model Mensaje {
 
   @@index([conversacionId], map: "idx_mensajes_conversacion")
   @@map("mensajes")
+}
+
+// =====================================================================
+// MODULO: CONFIGURACION DEL NEGOCIO (mesas, horarios de atencion)
+// =====================================================================
+
+model Mesa {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique @db.VarChar(50)
+  activa Boolean @default(true)
+
+  reservas Reserva[]
+  pedidos  Pedido[]
+
+  @@map("mesas")
+}
+
+/// Fila unica (id fijo = 1) con la configuracion general del negocio.
+model ConfiguracionNegocio {
+  id                Int      @id @default(1)
+  horaApertura      String   @default("12:00") @map("hora_apertura") @db.VarChar(5)
+  horaCierre        String   @default("22:30") @map("hora_cierre") @db.VarChar(5)
+  intervaloMinutos  Int      @default(30) @map("intervalo_minutos")
+  bufferMinutos     Int      @default(15) @map("buffer_minutos")
+  tamanoMaximoGrupo Int      @default(12) @map("tamano_maximo_grupo")
+  diasCerrados      Int[]    @default([1]) @map("dias_cerrados")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("configuracion_negocio")
 }

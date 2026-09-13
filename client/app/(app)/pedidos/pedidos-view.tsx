@@ -19,6 +19,7 @@ import {
   type Pedido,
 } from "@/api/pedidos.api";
 import { listProductos } from "@/api/products.api";
+import { listMesas } from "@/api/settings.api";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,12 +79,15 @@ export function PedidosView() {
   const [creando, setCreando] = useState(false);
   const [clienteNuevo, setClienteNuevo] = useState<number | undefined>(undefined);
   const [direccionNueva, setDireccionNueva] = useState("");
+  const [mesaNueva, setMesaNueva] = useState<number | undefined>(undefined);
 
   const pedidosQuery = useQuery({ queryKey: ["pedidos"], queryFn: () => listPedidos() });
   const clientesQuery = useQuery({ queryKey: ["clientes"], queryFn: listClientes });
   const productosQuery = useQuery({ queryKey: ["productos"], queryFn: () => listProductos() });
+  const mesasQuery = useQuery({ queryKey: ["mesas"], queryFn: () => listMesas(true) });
 
   const clientes = clientesQuery.data ?? [];
+  const mesas = mesasQuery.data ?? [];
   const productosDisponibles = (productosQuery.data ?? []).filter(
     (p) => p.estado === "activo" && p.stockActual > 0,
   );
@@ -94,7 +98,8 @@ export function PedidosView() {
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ["pedidos"] });
 
   const crearMutation = useMutation({
-    mutationFn: (dto: { clienteId: number; direccionEnvio?: string }) => createPedido(dto),
+    mutationFn: (dto: { clienteId: number; direccionEnvio?: string; mesaId?: number }) =>
+      createPedido(dto),
     onSuccess: (pedido) => {
       invalidar();
       setCreando(false);
@@ -110,7 +115,12 @@ export function PedidosView() {
       dto,
     }: {
       id: number;
-      dto: { clienteId?: number; direccionEnvio?: string; estado?: EstadoPedido };
+      dto: {
+        clienteId?: number;
+        direccionEnvio?: string;
+        estado?: EstadoPedido;
+        mesaId?: number;
+      };
     }) => updatePedido(id, dto),
     onSuccess: invalidar,
     onError: (error) => toast.error(errorMessage(error, "No se pudo actualizar el pedido")),
@@ -187,6 +197,7 @@ export function PedidosView() {
             setCreando(true);
             setClienteNuevo(undefined);
             setDireccionNueva("");
+            setMesaNueva(undefined);
           }}
         >
           <Plus className="size-4" /> Crear pedido
@@ -261,6 +272,12 @@ export function PedidosView() {
                             <p className="truncate text-sm font-medium">{pedido.cliente.nombre}</p>
                           </div>
                         </div>
+
+                        {pedido.mesa ? (
+                          <p className="text-xs text-muted-foreground">
+                            Mesa: {pedido.mesa.nombre}
+                          </p>
+                        ) : null}
 
                         <ul className="space-y-1">
                           {pedido.items.map((item) => (
@@ -342,6 +359,7 @@ export function PedidosView() {
               crearMutation.mutate({
                 clienteId: clienteNuevo,
                 direccionEnvio: direccionNueva || undefined,
+                mesaId: mesaNueva,
               });
             }}
           >
@@ -367,6 +385,27 @@ export function PedidosView() {
                   No hay clientes registrados todavía.
                 </p>
               ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label>Mesa (opcional, para clientes en físico)</Label>
+              <Select
+                value={mesaNueva !== undefined ? String(mesaNueva) : "none"}
+                onValueChange={(value) =>
+                  setMesaNueva(value === "none" ? undefined : Number(value))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin mesa (delivery / agente)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin mesa (delivery / agente)</SelectItem>
+                  {mesas.map((mesa) => (
+                    <SelectItem key={mesa.id} value={String(mesa.id)}>
+                      {mesa.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="direccion">Dirección de envío (opcional)</Label>
@@ -436,6 +475,34 @@ export function PedidosView() {
                       {estados.map((estado) => (
                         <SelectItem key={estado} value={estado}>
                           {estadoLabels[estado]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Mesa</Label>
+                  <Select
+                    value={
+                      draft.mesaId !== undefined && draft.mesaId !== null
+                        ? String(draft.mesaId)
+                        : "none"
+                    }
+                    onValueChange={(value) =>
+                      actualizarMutation.mutate({
+                        id: draft.id,
+                        dto: { mesaId: value === "none" ? undefined : Number(value) },
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin mesa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin mesa (delivery / agente)</SelectItem>
+                      {mesas.map((mesa) => (
+                        <SelectItem key={mesa.id} value={String(mesa.id)}>
+                          {mesa.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>

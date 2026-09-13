@@ -23,6 +23,7 @@ import {
   type EstadoReserva,
   type Reserva,
 } from "@/api/reservas.api";
+import { getConfiguracion, listMesas } from "@/api/settings.api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +45,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeSlots, todayISO, weekdayLabels } from "@/lib/crm-data";
-import { useCrm } from "@/lib/crm-store";
 import { cn } from "@/lib/utils";
 
 const estados: EstadoReserva[] = ["pendiente", "confirmada", "completada", "cancelada"];
@@ -99,9 +99,19 @@ type Draft = {
   date: string;
   time: string;
   personas: number;
-  mesa: string;
+  mesaId: number | undefined;
   estado: EstadoReserva;
   notas: string;
+};
+
+const DEFAULT_SLOT_CONFIG = {
+  openTime: "12:00",
+  closeTime: "22:30",
+  slotIntervalMinutes: 30,
+  bufferMinutes: 0,
+  maxPartySize: 12,
+  closedDays: [] as number[],
+  tables: [] as string[],
 };
 
 interface ReservationsCalendarProps {
@@ -117,7 +127,6 @@ export function ReservationsCalendar({
   lockToDay = false,
   fill = false,
 }: ReservationsCalendarProps) {
-  const { calendarSettings } = useCrm();
   const queryClient = useQueryClient();
   const [day, setDay] = useState(initialDate);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -127,12 +136,29 @@ export function ReservationsCalendar({
 
   const reservasQuery = useQuery({ queryKey: ["reservas"], queryFn: () => listReservas() });
   const clientesQuery = useQuery({ queryKey: ["clientes"], queryFn: listClientes });
+  const mesasQuery = useQuery({ queryKey: ["mesas"], queryFn: () => listMesas(true) });
+  const configQuery = useQuery({ queryKey: ["configuracion-negocio"], queryFn: getConfiguracion });
 
   const clientes = clientesQuery.data ?? [];
+  const mesas = mesasQuery.data ?? [];
+  const config = configQuery.data;
 
-  const slots = useMemo(() => buildTimeSlots(calendarSettings), [calendarSettings]);
+  const slotConfig = useMemo(
+    () =>
+      config
+        ? {
+            ...DEFAULT_SLOT_CONFIG,
+            openTime: config.horaApertura,
+            closeTime: config.horaCierre,
+            slotIntervalMinutes: config.intervaloMinutos,
+          }
+        : DEFAULT_SLOT_CONFIG,
+    [config],
+  );
+  const slots = useMemo(() => buildTimeSlots(slotConfig), [slotConfig]);
+  const maxPartySize = config?.tamanoMaximoGrupo ?? DEFAULT_SLOT_CONFIG.maxPartySize;
   const dayOfWeek = new Date(`${day}T00:00:00`).getDay();
-  const isClosed = calendarSettings.closedDays.includes(dayOfWeek);
+  const isClosed = (config?.diasCerrados ?? []).includes(dayOfWeek);
 
   const dayList = useMemo(
     () =>
@@ -200,7 +226,7 @@ export function ReservationsCalendar({
     date,
     time,
     personas: 2,
-    mesa: calendarSettings.tables[0] ?? "Mesa 1",
+    mesaId: mesas[0]?.id,
     estado: "pendiente",
     notas: "",
   });
@@ -211,7 +237,7 @@ export function ReservationsCalendar({
     date: r.fechaInicio ? dateKey(r.fechaInicio) : day,
     time: r.fechaInicio ? timeKey(r.fechaInicio) : slots[0] || "12:00",
     personas: r.personas ?? 2,
-    mesa: r.mesa ?? calendarSettings.tables[0] ?? "Mesa 1",
+    mesaId: r.mesaId ?? undefined,
     estado: r.estado,
     notas: r.notas ?? "",
   });
@@ -231,7 +257,7 @@ export function ReservationsCalendar({
       fechaInicio: fechaInicio.toISOString(),
       fechaFin: fechaFin.toISOString(),
       personas: draft.personas,
-      mesa: draft.mesa,
+      mesaId: draft.mesaId,
       notas: draft.notas || undefined,
       estado: draft.estado,
     };
@@ -331,7 +357,7 @@ export function ReservationsCalendar({
                         <Badge variant="outline">{estadoLabels[reserva.estado]}</Badge>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {reserva.personas ?? "—"} pax · {reserva.mesa ?? "Sin mesa"}
+                        {reserva.personas ?? "—"} pax · {reserva.mesa?.nombre ?? "Sin mesa"}
                       </p>
                       {reserva.notas ? (
                         <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -436,7 +462,7 @@ export function ReservationsCalendar({
                     id="people"
                     type="number"
                     min={1}
-                    max={calendarSettings.maxPartySize}
+                    max={maxPartySize}
                     value={draft.personas}
                     onChange={(event) =>
                       setDraft({ ...draft, personas: Number(event.target.value) })
@@ -446,16 +472,16 @@ export function ReservationsCalendar({
                 <div className="space-y-2">
                   <Label>Mesa / zona</Label>
                   <Select
-                    value={draft.mesa}
-                    onValueChange={(value) => setDraft({ ...draft, mesa: value })}
+                    value={draft.mesaId !== undefined ? String(draft.mesaId) : ""}
+                    onValueChange={(value) => setDraft({ ...draft, mesaId: Number(value) })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Elegir mesa" />
                     </SelectTrigger>
                     <SelectContent>
-                      {calendarSettings.tables.map((table) => (
-                        <SelectItem key={table} value={table}>
-                          {table}
+                      {mesas.map((mesa) => (
+                        <SelectItem key={mesa.id} value={String(mesa.id)}>
+                          {mesa.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>

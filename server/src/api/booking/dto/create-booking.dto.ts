@@ -18,8 +18,8 @@ export class CreateBookingDto {
   personas?: number;
 
   @IsOptional()
-  @IsString()
-  mesa?: string;
+  @IsInt()
+  mesaId?: number;
 
   @IsOptional()
   @IsString()

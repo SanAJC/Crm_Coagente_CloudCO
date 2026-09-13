@@ -20,8 +20,8 @@ export class CreateBookingPipe implements PipeTransform {
       throw new BadRequestException('personas debe ser un número entero positivo');
     }
 
-    if (value?.mesa !== undefined && typeof value.mesa !== 'string') {
-      throw new BadRequestException('mesa debe ser un texto');
+    if (value?.mesaId !== undefined && !isIdValido(value.mesaId)) {
+      throw new BadRequestException('mesaId debe ser un número entero positivo');
     }
 
     return value;

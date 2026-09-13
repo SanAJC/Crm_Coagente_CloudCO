@@ -3,19 +3,15 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import {
-  defaultCalendarSettings,
   defaultRolePermissions,
   demoOrders,
   demoProducts,
-  demoReservations,
   demoSupportTickets,
   demoTeam,
-  type CalendarSettings,
   type Order,
   type OrderStage,
   type PermissionKey,
   type Product,
-  type Reservation,
   type Role,
   type RolePermissions,
   type SupportTicket,
@@ -25,21 +21,16 @@ import {
 
 type CrmContextValue = {
   products: Product[];
-  reservations: Reservation[];
   orders: Order[];
   supportTickets: SupportTicket[];
   saveProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
-  saveReservation: (reservation: Reservation) => void;
-  deleteReservation: (id: string) => void;
   saveOrder: (order: Order) => void;
   moveOrder: (id: string, stage: OrderStage) => void;
   deleteOrder: (id: string) => void;
   saveSupportTicket: (ticket: SupportTicket) => void;
   moveSupportTicket: (id: string, status: TicketStatus) => void;
   deleteSupportTicket: (id: string) => void;
-  calendarSettings: CalendarSettings;
-  saveCalendarSettings: (settings: CalendarSettings) => void;
   team: TeamMember[];
   saveTeamMember: (member: TeamMember) => void;
   deleteTeamMember: (id: string) => void;
@@ -59,24 +50,18 @@ function upsert<T extends { id: string }>(list: T[], item: T) {
 
 export function CrmProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(demoProducts);
-  const [reservations, setReservations] = useState<Reservation[]>(demoReservations);
   const [orders, setOrders] = useState<Order[]>(demoOrders);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(demoSupportTickets);
-  const [calendarSettings, setCalendarSettings] =
-    useState<CalendarSettings>(defaultCalendarSettings);
   const [team, setTeam] = useState<TeamMember[]>(demoTeam);
   const [rolePermissions, setRolePermissions] = useState<RolePermissions>(defaultRolePermissions);
 
   const value = useMemo<CrmContextValue>(
     () => ({
       products,
-      reservations,
       orders,
       supportTickets,
       saveProduct: (product) => setProducts((list) => upsert(list, product)),
       deleteProduct: (id) => setProducts((list) => list.filter((p) => p.id !== id)),
-      saveReservation: (reservation) => setReservations((list) => upsert(list, reservation)),
-      deleteReservation: (id) => setReservations((list) => list.filter((r) => r.id !== id)),
       saveOrder: (order) => setOrders((list) => upsert(list, order)),
       moveOrder: (id, stage) =>
         setOrders((list) => list.map((o) => (o.id === id ? { ...o, stage } : o))),
@@ -98,8 +83,6 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           ),
         ),
       deleteSupportTicket: (id) => setSupportTickets((list) => list.filter((t) => t.id !== id)),
-      calendarSettings,
-      saveCalendarSettings: (settings) => setCalendarSettings(settings),
       team,
       saveTeamMember: (member) => setTeam((list) => upsert(list, member)),
       deleteTeamMember: (id) => setTeam((list) => list.filter((m) => m.id !== id)),
@@ -115,7 +98,7 @@ export function CrmProvider({ children }: { children: ReactNode }) {
           };
         }),
     }),
-    [products, reservations, orders, supportTickets, calendarSettings, team, rolePermissions],
+    [products, orders, supportTickets, team, rolePermissions],
   );
 
   return <CrmContext.Provider value={value}>{children}</CrmContext.Provider>;

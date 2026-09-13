@@ -12,6 +12,7 @@ import { BookingModule } from './api/booking/booking.module.js';
 import { TicketsModule } from './api/tickets/tickets.module.js';
 import { OrderModule } from './api/order/order.module.js';
 import { MessagesModule } from './api/messages/messages.module.js';
+import { SettingsModule } from './api/settings/settings.module.js';
 import { N8nModule } from './webhooks/n8n/n8n.module.js';
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -39,6 +40,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     TicketsModule,
     OrderModule,
     MessagesModule,
+    SettingsModule,
     N8nModule,
   ],
 })
