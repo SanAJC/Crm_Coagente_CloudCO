@@ -1,9 +1,21 @@
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { listCategorias } from "@/api/categorias.api";
+import {
+  createProducto,
+  deleteProducto,
+  listProductos,
+  updateProducto,
+  type CreateProductoInput,
+  type EstadoProducto,
+  type Producto,
+} from "@/api/products.api";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -34,37 +45,110 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { currency, type Product } from "@/lib/crm-data";
-import { newId, useCrm } from "@/lib/crm-store";
+import { currency } from "@/lib/crm-data";
 
-const categories: Product["category"][] = ["Entrantes", "Principales", "Postres", "Bebidas"];
+const estadoLabels: Record<EstadoProducto, string> = {
+  activo: "Activo",
+  inactivo: "Inactivo",
+  descontinuado: "Descontinuado",
+};
 
-const emptyProduct = (): Product => ({
-  id: newId(),
-  name: "",
-  category: "Principales",
-  price: 0,
-  stock: 0,
-  available: true,
-  description: "",
-});
+type Draft = CreateProductoInput & { id?: number; estado: EstadoProducto };
+
+function emptyDraft(): Draft {
+  return {
+    sku: "",
+    nombre: "",
+    categoriaId: undefined,
+    precio: 0,
+    costo: 0,
+    stockActual: 0,
+    stockMinimo: 0,
+    descripcion: "",
+    estado: "activo",
+  };
+}
+
+function draftFromProducto(p: Producto): Draft {
+  return {
+    id: p.id,
+    sku: p.sku,
+    nombre: p.nombre,
+    categoriaId: p.categoriaId ?? undefined,
+    precio: p.precio,
+    costo: p.costo ?? 0,
+    stockActual: p.stockActual,
+    stockMinimo: p.stockMinimo,
+    descripcion: p.descripcion ?? "",
+    estado: p.estado,
+  };
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (isAxiosError(error) && typeof error.response?.data?.message === "string") {
+    return error.response.data.message as string;
+  }
+  return fallback;
+}
 
 export function ProductsView() {
-  const { products, saveProduct, deleteProduct } = useCrm();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<"todas" | Product["category"]>("todas");
-  const [draft, setDraft] = useState<Product | null>(null);
+  const [categoriaFiltro, setCategoriaFiltro] = useState<number | "todas">("todas");
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [isNew, setIsNew] = useState(false);
+
+  const productosQuery = useQuery({ queryKey: ["productos"], queryFn: () => listProductos() });
+  const categoriasQuery = useQuery({ queryKey: ["categorias"], queryFn: listCategorias });
+
+  const categorias = categoriasQuery.data ?? [];
+
+  const crearMutation = useMutation({
+    mutationFn: (dto: CreateProductoInput) => createProducto(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productos"] });
+      setDraft(null);
+      toast.success("Producto creado");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo crear el producto")),
+  });
+
+  const actualizarMutation = useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: number;
+      dto: CreateProductoInput & { estado: EstadoProducto };
+    }) => updateProducto(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productos"] });
+      setDraft(null);
+      toast.success("Producto actualizado");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo actualizar el producto")),
+  });
+
+  const eliminarMutation = useMutation({
+    mutationFn: (id: number) => deleteProducto(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productos"] });
+      toast.success("Producto marcado como descontinuado");
+    },
+    onError: (error) => toast.error(errorMessage(error, "No se pudo eliminar el producto")),
+  });
 
   const filtered = useMemo(
     () =>
-      products.filter(
-        (product) =>
-          (category === "todas" || product.category === category) &&
-          product.name.toLowerCase().includes(query.trim().toLowerCase()),
+      (productosQuery.data ?? []).filter(
+        (p) =>
+          (categoriaFiltro === "todas" || p.categoriaId === categoriaFiltro) &&
+          p.nombre.toLowerCase().includes(query.trim().toLowerCase()),
       ),
-    [products, query, category],
+    [productosQuery.data, query, categoriaFiltro],
   );
+
+  const guardando = crearMutation.isPending || actualizarMutation.isPending;
 
   return (
     <AppShell
@@ -73,7 +157,7 @@ export function ProductsView() {
       actions={
         <Button
           onClick={() => {
-            setDraft(emptyProduct());
+            setDraft(emptyDraft());
             setIsNew(true);
           }}
         >
@@ -87,20 +171,25 @@ export function ProductsView() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Buscar plato o bebida"
+              placeholder="Buscar producto"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <Select value={category} onValueChange={(value) => setCategory(value as typeof category)}>
+          <Select
+            value={String(categoriaFiltro)}
+            onValueChange={(value) =>
+              setCategoriaFiltro(value === "todas" ? "todas" : Number(value))
+            }
+          >
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas las categorías</SelectItem>
-              {categories.map((item) => (
-                <SelectItem key={item} value={item}>
-                  {item}
+              {categorias.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.nombre}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -120,55 +209,68 @@ export function ProductsView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <p className="font-medium">{product.name}</p>
-                    <p className="max-w-sm truncate text-xs text-muted-foreground">
-                      {product.description}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {product.category}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {currency(product.price)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{product.stock}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={product.available && product.stock > 0 ? "secondary" : "destructive"}
-                    >
-                      {product.available && product.stock > 0 ? "Disponible" : "Agotado"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Editar ${product.name}`}
-                      onClick={() => {
-                        setDraft({ ...product });
-                        setIsNew(false);
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Eliminar ${product.name}`}
-                      onClick={() => {
-                        deleteProduct(product.id);
-                        toast.success("Producto eliminado");
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+              {productosQuery.isLoading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
+                    Cargando productos…
                   </TableCell>
                 </TableRow>
-              ))}
-              {filtered.length === 0 ? (
+              ) : (
+                filtered.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <p className="font-medium">{product.nombre}</p>
+                      <p className="text-xs text-muted-foreground">{product.sku}</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {product.categoria?.nombre ?? "Sin categoría"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {currency(product.precio)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{product.stockActual}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          product.estado === "activo" && product.stockActual > 0
+                            ? "secondary"
+                            : "destructive"
+                        }
+                      >
+                        {product.estado === "activo" && product.stockActual === 0
+                          ? "Agotado"
+                          : estadoLabels[product.estado]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Editar ${product.nombre}`}
+                        onClick={() => {
+                          setDraft(draftFromProducto(product));
+                          setIsNew(false);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Eliminar ${product.nombre}`}
+                        onClick={() => eliminarMutation.mutate(product.id)}
+                        disabled={eliminarMutation.isPending}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+              {!productosQuery.isLoading && filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={6}
@@ -188,7 +290,7 @@ export function ProductsView() {
           <DialogHeader>
             <DialogTitle>{isNew ? "Nuevo producto" : "Editar producto"}</DialogTitle>
             <DialogDescription>
-              Los cambios se aplican al catálogo de demostración de este panel.
+              Los cambios se guardan directo en el catálogo real.
             </DialogDescription>
           </DialogHeader>
           {draft ? (
@@ -197,60 +299,136 @@ export function ProductsView() {
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!draft.name.trim()) return;
-                saveProduct(draft);
-                setDraft(null);
-                toast.success(isNew ? "Producto creado" : "Producto actualizado");
+                if (!draft.nombre.trim() || !draft.sku.trim()) return;
+
+                const dto: CreateProductoInput & { estado: EstadoProducto } = {
+                  sku: draft.sku.trim(),
+                  nombre: draft.nombre.trim(),
+                  descripcion: draft.descripcion || undefined,
+                  categoriaId: draft.categoriaId,
+                  precio: draft.precio,
+                  costo: draft.costo,
+                  stockActual: draft.stockActual,
+                  stockMinimo: draft.stockMinimo,
+                  estado: draft.estado,
+                };
+
+                if (isNew) {
+                  crearMutation.mutate(dto);
+                } else if (draft.id !== undefined) {
+                  actualizarMutation.mutate({ id: draft.id, dto });
+                }
               }}
             >
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre</Label>
-                <Input
-                  id="name"
-                  value={draft.name}
-                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                  required
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="sku">SKU</Label>
+                  <Input
+                    id="sku"
+                    value={draft.sku}
+                    onChange={(event) => setDraft({ ...draft, sku: event.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input
+                    id="name"
+                    value={draft.nombre}
+                    onChange={(event) => setDraft({ ...draft, nombre: event.target.value })}
+                    required
+                  />
+                </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2 sm:col-span-1">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
                   <Label>Categoría</Label>
                   <Select
-                    value={draft.category}
+                    value={draft.categoriaId ? String(draft.categoriaId) : "sin_categoria"}
                     onValueChange={(value) =>
-                      setDraft({ ...draft, category: value as Product["category"] })
+                      setDraft({
+                        ...draft,
+                        categoriaId: value === "sin_categoria" ? undefined : Number(value),
+                      })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((item) => (
-                        <SelectItem key={item} value={item}>
-                          {item}
+                      <SelectItem value="sin_categoria">Sin categoría</SelectItem>
+                      {categorias.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.nombre}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Select
+                    value={draft.estado}
+                    onValueChange={(value) =>
+                      setDraft({ ...draft, estado: value as EstadoProducto })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(estadoLabels) as EstadoProducto[]).map((estado) => (
+                        <SelectItem key={estado} value={estado}>
+                          {estadoLabels[estado]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="space-y-2 sm:col-span-1">
                   <Label htmlFor="price">Precio (COP)</Label>
                   <Input
                     id="price"
                     type="number"
                     min={0}
-                    value={draft.price}
-                    onChange={(event) => setDraft({ ...draft, price: Number(event.target.value) })}
+                    value={draft.precio}
+                    onChange={(event) => setDraft({ ...draft, precio: Number(event.target.value) })}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="costo">Costo (COP)</Label>
+                  <Input
+                    id="costo"
+                    type="number"
+                    min={0}
+                    value={draft.costo}
+                    onChange={(event) => setDraft({ ...draft, costo: Number(event.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
                   <Label htmlFor="stock">Stock</Label>
                   <Input
                     id="stock"
                     type="number"
                     min={0}
-                    value={draft.stock}
-                    onChange={(event) => setDraft({ ...draft, stock: Number(event.target.value) })}
+                    value={draft.stockActual}
+                    onChange={(event) =>
+                      setDraft({ ...draft, stockActual: Number(event.target.value) })
+                    }
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-1">
+                  <Label htmlFor="stockMinimo">Stock mínimo</Label>
+                  <Input
+                    id="stockMinimo"
+                    type="number"
+                    min={0}
+                    value={draft.stockMinimo}
+                    onChange={(event) =>
+                      setDraft({ ...draft, stockMinimo: Number(event.target.value) })
+                    }
                   />
                 </div>
               </div>
@@ -258,20 +436,8 @@ export function ProductsView() {
                 <Label htmlFor="description">Descripción</Label>
                 <Textarea
                   id="description"
-                  value={draft.description}
-                  onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <p className="text-sm font-medium">Disponible en carta</p>
-                  <p className="text-xs text-muted-foreground">
-                    Se oculta del menú si lo desactivas.
-                  </p>
-                </div>
-                <Switch
-                  checked={draft.available}
-                  onCheckedChange={(checked) => setDraft({ ...draft, available: checked })}
+                  value={draft.descripcion}
+                  onChange={(event) => setDraft({ ...draft, descripcion: event.target.value })}
                 />
               </div>
             </form>
@@ -280,8 +446,8 @@ export function ProductsView() {
             <Button variant="outline" onClick={() => setDraft(null)}>
               Cancelar
             </Button>
-            <Button type="submit" form="product-form">
-              Guardar
+            <Button type="submit" form="product-form" disabled={guardando}>
+              {guardando ? "Guardando…" : "Guardar"}
             </Button>
           </DialogFooter>
         </DialogContent>
