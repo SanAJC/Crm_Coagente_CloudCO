@@ -55,10 +55,13 @@ export class AppModule implements NestModule {
         { path: 'auth/register', method: RequestMethod.POST },
         { path: 'auth/refresh', method: RequestMethod.POST },
         { path: 'webhooks/n8n/mensajes', method: RequestMethod.POST },
+        { path: 'webhooks/n8n/clientes/resolver', method: RequestMethod.POST },
         { path: 'webhooks/n8n/reservas', method: RequestMethod.POST },
         { path: 'webhooks/n8n/pedidos', method: RequestMethod.POST },
         { path: 'webhooks/n8n/tickets', method: RequestMethod.POST },
         { path: 'webhooks/n8n/tickets/:id', method: RequestMethod.PATCH },
+        { path: 'webhooks/n8n/pedidos', method: RequestMethod.GET },
+        { path: 'webhooks/n8n/productos', method: RequestMethod.GET },
       )
       .forRoutes('*'); // Aplicar a todas las rutas excepto las excluidas
   }

@@ -106,7 +106,7 @@ export class MensajesRepository {
     return mensaje;
   }
 
-  private upsertConversacion(canal: string, canalChatId: string, clienteId?: number) {
+  upsertConversacion(canal: string, canalChatId: string, clienteId?: number) {
     return this.prisma.conversacion.upsert({
       where: { canal_canalChatId: { canal, canalChatId } },
       update: clienteId !== undefined ? { clienteId } : {},

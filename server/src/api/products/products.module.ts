@@ -14,5 +14,6 @@ import { ProductsService } from './products.service.js';
     CategoriasService,
     CategoriasRepository,
   ],
+  exports: [ProductsService],
 })
 export class ProductsModule {}
