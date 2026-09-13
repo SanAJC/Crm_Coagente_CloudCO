@@ -22,28 +22,44 @@ import { UpdateUsuarioPipe } from './pipes/update-usuario.pipe.js';
 import { UsuariosService } from './usuarios.service.js';
 
 @Controller('usuarios')
-@UseGuards(AdminGuard, PermsGuard)
-@Perms('usuarios.administrar')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
+  /**
+   * Lista liviana (id + nombre) para dropdowns de asignación (p. ej. tickets).
+   * A propósito NO lleva AdminGuard/PermsGuard: cualquier usuario logueado
+   * puede ver nombres de compañeros activos, pero no el resto de sus datos.
+   */
+  @Get('asignables')
+  findAsignables() {
+    return this.usuariosService.findAsignables();
+  }
+
   @Get()
+  @UseGuards(AdminGuard, PermsGuard)
+  @Perms('usuarios.administrar')
   findAll(@Query('estado') estado?: string) {
     return this.usuariosService.findAll(estado);
   }
 
   @Get(':id')
+  @UseGuards(AdminGuard, PermsGuard)
+  @Perms('usuarios.administrar')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.findOne(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminGuard, PermsGuard)
+  @Perms('usuarios.administrar')
   create(@Body(CreateUsuarioPipe) dto: CreateUsuarioDto) {
     return this.usuariosService.create(dto);
   }
 
   @Patch(':id')
+  @UseGuards(AdminGuard, PermsGuard)
+  @Perms('usuarios.administrar')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body(UpdateUsuarioPipe) dto: UpdateUsuarioDto,
@@ -52,6 +68,8 @@ export class UsuariosController {
   }
 
   @Delete(':id')
+  @UseGuards(AdminGuard, PermsGuard)
+  @Perms('usuarios.administrar')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.desactivar(id);
   }

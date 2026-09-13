@@ -14,6 +14,16 @@ const PEDIDO_SELECT = {
   updatedAt: true,
   cliente: { select: { id: true, nombre: true } },
   usuario: { select: { id: true, nombre: true } },
+  pedidoDetalles: {
+    select: {
+      id: true,
+      productoId: true,
+      cantidad: true,
+      precioUnitario: true,
+      subtotal: true,
+      producto: { select: { id: true, nombre: true, sku: true } },
+    },
+  },
 } as const;
 
 export interface CrearPedidoData {
@@ -80,6 +90,14 @@ export class PedidosRepository {
     return this.prisma.pedido.update({
       where: { id },
       data: { estado },
+      select: PEDIDO_SELECT,
+    });
+  }
+
+  actualizarTotal(id: number, total: number) {
+    return this.prisma.pedido.update({
+      where: { id },
+      data: { total },
       select: PEDIDO_SELECT,
     });
   }

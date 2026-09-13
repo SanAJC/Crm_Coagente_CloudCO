@@ -44,6 +44,14 @@ export class UsuariosRepository {
     });
   }
 
+  findAsignables() {
+    return this.prisma.usuario.findMany({
+      where: { estado: 'activo' },
+      select: { id: true, nombre: true },
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
   findById(id: number) {
     return this.prisma.usuario.findUnique({
       where: { id },

@@ -18,6 +18,10 @@ export class UsuariosService {
     return usuarios.map((usuario) => this.mapUsuario(usuario));
   }
 
+  findAsignables() {
+    return this.usuariosRepository.findAsignables();
+  }
+
   async findOne(id: number) {
     const usuario = await this.usuariosRepository.findById(id);
     if (!usuario) {
