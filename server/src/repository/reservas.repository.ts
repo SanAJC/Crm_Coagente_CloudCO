@@ -71,6 +71,29 @@ export class ReservasRepository {
     return this.prisma.mesa.findUnique({ where: { id: mesaId } });
   }
 
+  /**
+   * Choque de horario: otra reserva activa (pendiente/confirmada) en la misma
+   * mesa cuyo rango se solapa. Cancelada/completada nunca bloquean -- liberan
+   * el cupo automáticamente.
+   */
+  async existeChoqueMesa(
+    mesaId: number,
+    fechaInicio: Date,
+    fechaFin: Date,
+    excluirId?: number,
+  ): Promise<boolean> {
+    const conflicto = await this.prisma.reserva.findFirst({
+      where: {
+        mesaId,
+        estado: { in: ['pendiente', 'confirmada'] },
+        id: excluirId !== undefined ? { not: excluirId } : undefined,
+        fechaInicio: { lt: fechaFin },
+        fechaFin: { gt: fechaInicio },
+      },
+    });
+    return conflicto !== null;
+  }
+
   create(data: CrearReservaData) {
     return this.prisma.reserva.create({ data, select: RESERVA_SELECT });
   }
